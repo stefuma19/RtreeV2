@@ -208,7 +208,7 @@ void processRow(const MyTuple values, std::vector<double> query) {
 
 int main() {
     //
-    typedef RTree<ValueType, double, DIM, float, 100> MyTree;
+    typedef RTree<ValueType, double, DIM, float, 20> MyTree;
     MyTree tree;
 
     //std::string filePath = "../datasets/dataset_small.csv";

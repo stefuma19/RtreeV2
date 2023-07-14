@@ -1764,13 +1764,14 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::linearTopK
         a_node = toVisit.top(); //Get the highest priority Object
         toVisit.pop();
         contBox++;
-        /*if(a_node.score > resultList.top().score){
+        double temp = resultList.top().score;
+        if(a_node.score > temp){
             std::cout << "contBox: " << contBox << std::endl;
             std::cout << "contLeaf: " << contLeaf << std::endl;
             std::cout << "contPoint: " << contPoint << std::endl;
 
             return resultList;
-        }*/
+        }
         if(a_node.node->IsLeaf())
         {
             contLeaf++;

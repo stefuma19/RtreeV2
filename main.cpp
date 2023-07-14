@@ -195,17 +195,6 @@ std::vector<MyTuple> readCSVDir(const std::string& filename, std::vector<double>
 
 
 
-
-void processRow(const MyTuple values, std::vector<double> query) {
-    // Do something with the values...
-    double score = 0;
-    for (int i = 0; i< DIM; i++){
-        score += values[i+1] * query[i];
-    }
-}
-
-
-
 int main() {
     //
     typedef RTree<ValueType, double, DIM, float, 20> MyTree;
@@ -238,27 +227,37 @@ int main() {
     //Linear Rtree
 
     std::cout << "LINEAR RTREE" << std::endl;
-    auto startTime = std::chrono::high_resolution_clock::now();
+    auto startTimeLinRT = std::chrono::high_resolution_clock::now();
     tree.linearTopKQueryRTree(k, query);
-    auto endTime = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime);
+    auto endTimeLinRT = std::chrono::high_resolution_clock::now();
+    auto durationLinRT = std::chrono::duration_cast<std::chrono::microseconds>(endTimeLinRT - startTimeLinRT);
 
-    std::cout << "Execution time: " << duration.count() << " microseconds." << std::endl;
+    std::cout << "Execution time: " << durationLinRT.count() << " microseconds." << std::endl;
+
+    //Directional Rtree
+
+    std::cout << "DIRECTIONAL RTREE" << std::endl;
+    auto startTimeDirRT = std::chrono::high_resolution_clock::now();
+    tree.DirectionalTopKQueryRTree(k, query);
+    auto endTimeDirRT = std::chrono::high_resolution_clock::now();
+    auto durationDirRT = std::chrono::duration_cast<std::chrono::microseconds>(endTimeDirRT - startTimeDirRT);
+
+    std::cout << "Execution time: " << durationDirRT.count() << " microseconds." << std::endl;
 
     //Linear Sequential
     std::cout << "LINEAR SEQUENTIAL" << std::endl;
-    auto startTimeSeq = std::chrono::high_resolution_clock::now();
+    auto startTimeLinSeq = std::chrono::high_resolution_clock::now();
 
     std::vector<MyTuple> tuplesLin = readCSVLin(filePath, query);
     std::sort(tuplesLin.begin(), tuplesLin.end(), compareLastColumn);
 
-    auto endTimeSeq = std::chrono::high_resolution_clock::now();
-    auto durationSeq = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeSeq - startTimeSeq);
+    auto endTimeLinSeq = std::chrono::high_resolution_clock::now();
+    auto durationLinSeq = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeLinSeq - startTimeLinSeq);
 
     for (int i = k-1; i >= 0; i--){
         std::cout << i << " tuples score: " << tuplesLin[i].back() << std::endl;
     }
-    std::cout << "Execution time: " << durationSeq.count() << " milliseconds." << std::endl;
+    std::cout << "Execution time: " << durationLinSeq.count() << " milliseconds." << std::endl;
 
     //Directional Sequential
     std::cout << "DIRECTIONAL SEQUENTIAL" << std::endl;

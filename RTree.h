@@ -17,6 +17,7 @@
 #include <iostream>
 #include <limits>
 
+#define BETA 0.66
 #define ASSERT assert // RTree uses ASSERT( condition )
 #ifndef Min
   #define Min std::min
@@ -395,6 +396,7 @@ public:
   // return all the AABBs that form the RTree
   std::vector<Rect> ListTree() const;
   std::priority_queue<BranchWithScore> linearTopKQueryRTree(int k, std::vector<double> query);
+  std::priority_queue<BranchWithScore> DirectionalTopKQueryRTree(int k, std::vector<double> query);
 };
 
 // Because there is not stream support, this is a quick and dirty file I/O helper.
@@ -1717,6 +1719,36 @@ double computeScoreLin(double* vertex1, std::vector<double> query) {
     return score;
 }
 
+double dist_line_point(double *point, const std::vector<double>& query) {
+    double dist = 0.0;
+    int len = query.size();
+
+    for (int i = 0; i < len; i++) {
+        double num = 0.0;
+        double den = 0.0;
+
+        for (int j = 0; j < len; j++) {
+            num += query[j] * point[j];
+            den += query[j] * query[j];
+        }
+
+        double d = point[i] - (query[i] * num / den);
+        d = d * d;
+        dist += d;
+    }
+
+    return std::sqrt(dist);
+}
+
+double computeScoreDir(double* vertex1, std::vector<double> query) {
+    double score = 0;
+    for(int i = 0; i < query.size(); i++){
+        score += vertex1[i] * query[i];
+    }
+    score = BETA * score + (1 - BETA) * dist_line_point(vertex1, query);
+    return score;
+}
+
 double computeMinScoreLin(double* vertex1, std::vector<double> query) {
     double score = 0;
     for(int i = 0; i < query.size(); i++){
@@ -1808,6 +1840,99 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::linearTopK
         std::cout << i << " resultList score: " << resultList.top().score << std::endl;
         resultList.pop();
     }*/
+
+    std::cout << "contBox: " << contBox << std::endl;
+    std::cout << "contLeaf: " << contLeaf << std::endl;
+    std::cout << "contPoint: " << contPoint << std::endl;
+
+    return resultList;
+}
+
+RTREE_TEMPLATE
+std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::DirectionalTopKQueryRTree(int k, std::vector<double> query)
+{
+            ASSERT(m_root);
+            ASSERT(m_root->m_level >= 0);
+
+    double current_score;
+    NodeWithScore nodeWithScore;
+    BranchWithScore branchWithScore;
+    int contBox = 0;
+    int contLeaf = 0;
+    int contPoint = 0;
+
+    std::priority_queue<BranchWithScore> resultList;
+
+    // Priority queue to store nodes based on their level
+    std::priority_queue<NodeWithScore> toVisit;
+
+    contBox++; //root access
+    for(int i = 0; i < m_root->m_count; i++)
+    {
+        nodeWithScore.node = m_root->m_branch[i].m_child;
+        //TODO: quadratic minimization
+        nodeWithScore.score = computeMinScoreLin(m_root->m_branch[i].m_rect.m_min, query);
+        toVisit.push(nodeWithScore);
+    }
+
+
+    for(int i = 0; i < k; i++){
+        branchWithScore.branch = nullptr;
+        branchWithScore.score = std::numeric_limits<double>::max();
+        resultList.push(branchWithScore);
+    }
+
+    NodeWithScore a_node;
+
+    while (!toVisit.empty()) {
+        a_node = toVisit.top(); //Get the highest priority Object
+        toVisit.pop();
+        contBox++;
+        double temp = resultList.top().score;
+        /*if(a_node.score > temp){
+            std::cout << "contBox: " << contBox << std::endl;
+            std::cout << "contLeaf: " << contLeaf << std::endl;
+            std::cout << "contPoint: " << contPoint << std::endl;
+
+            return resultList;
+        }*/
+        if(a_node.node->IsLeaf())
+        {
+            contLeaf++;
+            // This is a leaf node
+            for(int index=0; index < a_node.node->m_count; index++)
+            {
+                contPoint++;
+                current_score = computeScoreDir(a_node.node->m_branch[index].m_rect.m_min, query);
+                if(current_score < resultList.top().score){
+                    resultList.pop();
+                    branchWithScore.branch = &a_node.node->m_branch[index];
+                    branchWithScore.score = current_score;
+                    resultList.push(branchWithScore);
+                }
+            }
+        }
+        else
+        {
+            // This is an internal node in the tree
+            for(int index=0; index < a_node.node->m_count; index++)
+            {
+                //TODO: quadratic minimization
+                current_score = computeMinScoreLin(a_node.node->m_branch[index].m_rect.m_min, query);
+                //if(current_score < resultList.top().score)  {
+                nodeWithScore.node = a_node.node->m_branch[index].m_child;
+                nodeWithScore.score = current_score;
+                toVisit.push(nodeWithScore);
+                //}
+            }
+        }
+    }
+
+
+    for(int i = 0; i < k; i++){
+        std::cout << i << " resultList score: " << resultList.top().score << std::endl;
+        resultList.pop();
+    }
 
     std::cout << "contBox: " << contBox << std::endl;
     std::cout << "contLeaf: " << contLeaf << std::endl;

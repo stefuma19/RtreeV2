@@ -11,7 +11,7 @@ typedef int ValueType;
 typedef std::vector<double> MyTuple;
 
 
-#define DIM 2
+#define DIM 4
 #define BETA 0.66
 
 
@@ -201,8 +201,8 @@ int main() {
     MyTree tree;
 
     //std::string filePath = "../datasets/dataset_small.csv";
-    std::string filePath = "../datasets/cor_neg_1k_2.csv";
-    //std::string filePath = "../datasets/cor_neg_1M_4.csv";
+    //std::string filePath = "../datasets/cor_neg_1k_2.csv";
+    std::string filePath = "../datasets/cor_neg_1M_4.csv";
 
     //Tree creation
     std::vector<Rect> rectangles = createRectanglesFromCSV(filePath, DIM);
@@ -221,12 +221,19 @@ int main() {
         i++;
     }
 
+    std::cout << "----------------R_TREE STATS----------------" << std::endl;
+    int numNodes, numLeaves, numPoints;
+    tree.CountBoxesLeavesAndPoints(&numNodes, &numLeaves, &numPoints);
+    std::cout << "contBox: " << numNodes << std::endl;
+    std::cout << "contLeaf: " << numLeaves << std::endl;
+    std::cout << "contPoint: " << numPoints << std::endl;
+
     std::vector<double> query {0.5, 0.5};
     int k = 10;
 
     //Linear Rtree
 
-    std::cout << "LINEAR RTREE" << std::endl;
+    std::cout << "----------------LINEAR RTREE----------------" << std::endl;
     auto startTimeLinRT = std::chrono::high_resolution_clock::now();
     tree.linearTopKQueryRTree(k, query);
     auto endTimeLinRT = std::chrono::high_resolution_clock::now();
@@ -236,7 +243,7 @@ int main() {
 
     //Directional Rtree
 
-    std::cout << "DIRECTIONAL RTREE" << std::endl;
+    std::cout << "----------------DIRECTIONAL RTREE----------------" << std::endl;
     auto startTimeDirRT = std::chrono::high_resolution_clock::now();
     tree.DirectionalTopKQueryRTree(k, query);
     auto endTimeDirRT = std::chrono::high_resolution_clock::now();
@@ -245,7 +252,7 @@ int main() {
     std::cout << "Execution time: " << durationDirRT.count() << " microseconds." << std::endl;
 
     //Linear Sequential
-    std::cout << "LINEAR SEQUENTIAL" << std::endl;
+    std::cout << "----------------LINEAR SEQUENTIAL----------------" << std::endl;
     auto startTimeLinSeq = std::chrono::high_resolution_clock::now();
 
     std::vector<MyTuple> tuplesLin = readCSVLin(filePath, query);
@@ -260,7 +267,7 @@ int main() {
     std::cout << "Execution time: " << durationLinSeq.count() << " milliseconds." << std::endl;
 
     //Directional Sequential
-    std::cout << "DIRECTIONAL SEQUENTIAL" << std::endl;
+    std::cout << "----------------DIRECTIONAL SEQUENTIAL----------------" << std::endl;
     auto startTimeDirSeq = std::chrono::high_resolution_clock::now();
 
     std::vector<MyTuple> tuplesDir = readCSVDir(filePath, query);

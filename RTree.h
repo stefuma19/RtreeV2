@@ -397,6 +397,7 @@ public:
   std::vector<Rect> ListTree() const;
   std::priority_queue<BranchWithScore> linearTopKQueryRTree(int k, std::vector<double> query);
   std::priority_queue<BranchWithScore> DirectionalTopKQueryRTree(int k, std::vector<double> query);
+  void CountBoxesLeavesAndPoints(int* a_boxCount, int* a_leafCount, int* a_pointCount);
 };
 
 // Because there is not stream support, this is a quick and dirty file I/O helper.
@@ -1939,6 +1940,51 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
     std::cout << "contPoint: " << contPoint << std::endl;
 
     return resultList;
+}
+
+RTREE_TEMPLATE
+void RTREE_QUAL::CountBoxesLeavesAndPoints(int *box_total, int *leaves_total, int *points_total) {
+
+            ASSERT(m_root);
+            ASSERT(m_root->m_level >= 0);
+
+    NodeWithScore nodeWithScore;
+    int contBox = 0;
+    int contLeaf = 0;
+    int contPoint = 0;
+
+    // Priority queue to store nodes based on their level
+    std::priority_queue<NodeWithScore> toVisit;
+
+    contBox++; //root access
+    for (int i = 0; i < m_root->m_count; i++) {
+        nodeWithScore.node = m_root->m_branch[i].m_child;
+        toVisit.push(nodeWithScore);
+    }
+
+    NodeWithScore a_node;
+
+    while (!toVisit.empty()) {
+        a_node = toVisit.top(); //Get the highest priority Object
+        toVisit.pop();
+        contBox++;
+
+        if (a_node.node->IsLeaf()) {
+            contLeaf++;
+            for (int index = 0; index < a_node.node->m_count; index++) {
+                contPoint++;
+            }
+        } else {
+            for (int index = 0; index < a_node.node->m_count; index++) {
+                nodeWithScore.node = a_node.node->m_branch[index].m_child;
+                toVisit.push(nodeWithScore);
+            }
+        }
+    }
+
+    *box_total = contBox;
+    *leaves_total = contLeaf;
+    *points_total = contPoint;
 }
 
 

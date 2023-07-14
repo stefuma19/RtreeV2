@@ -1808,10 +1808,11 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::linearTopK
         m++;
     }
 
-    for(int i = 0; i < k; i++){
+
+    /*for(int i = 0; i < k; i++){
         std::cout << i << " resultList score: " << resultList.top().score << std::endl;
         resultList.pop();
-    }
+    }*/
 
     return resultList;
 }

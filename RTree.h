@@ -1731,32 +1731,26 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::linearTopK
             ASSERT(m_root);
             ASSERT(m_root->m_level >= 0);
 
-    //std::vector<NodeWithScore> resultList;
     double current_score;
     NodeWithScore nodeWithScore;
     BranchWithScore branchWithScore;
+    int contBox = 0;
+    int contLeaf = 0;
+    int contPoint = 0;
 
     std::priority_queue<BranchWithScore> resultList;
-    //TODO: ATTENZIONE. PER LA RESULT LIST LA PRIORITÀ DEVE ESSERE INVERSA RISPETTO A QUELLA DELLA CODA DI VISITA
-    //TODO: IN PARTICOLARE VOGLIAMO CHE CON LA POP VENGA ESTRATTO IL RISULTATO CON PUNTEGGIO PEGGIORE
 
     // Priority queue to store nodes based on their level
     std::priority_queue<NodeWithScore> toVisit;
 
+    contBox++; //root access
     for(int i = 0; i < m_root->m_count; i++)
     {
         nodeWithScore.node = m_root->m_branch[i].m_child;
-        //std::cout << "nodeWithScore min: " << m_root->m_branch[i].m_rect.m_min[0];
-        //std::cout << " nodeWithScore max " << m_root->m_branch[i].m_rect.m_max[0];
         nodeWithScore.score = computeMinScoreLin(m_root->m_branch[i].m_rect.m_min, query);
-        //std::cout << "nodeWithScore score: " << nodeWithScore->score << std::endl;
         toVisit.push(nodeWithScore);
     }
 
-    /*for(int l = 0; l < k; l++){
-        std::cout << l << " to visit score: " << toVisit.top()->score << std::endl;
-        toVisit.pop();
-    }*/
 
     for(int i = 0; i < k; i++){
         branchWithScore.branch = nullptr;
@@ -1764,25 +1758,26 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::linearTopK
         resultList.push(branchWithScore);
     }
 
-    //std::cout << "RIGA NUOVA" << std::endl;
-
-    //for(int l = 0; l < k; l++){
-    //    std::cout << l << " to visit score: " << toVisit.top().score << std::endl;
-    //    toVisit.pop();
-    //}
-
     NodeWithScore a_node;
 
-    int m = 0;
     while (!toVisit.empty()) {
         a_node = toVisit.top(); //Get the highest priority Object
         toVisit.pop();
+        contBox++;
+        /*if(a_node.score > resultList.top().score){
+            std::cout << "contBox: " << contBox << std::endl;
+            std::cout << "contLeaf: " << contLeaf << std::endl;
+            std::cout << "contPoint: " << contPoint << std::endl;
 
+            return resultList;
+        }*/
         if(a_node.node->IsLeaf())
         {
+            contLeaf++;
             // This is a leaf node
             for(int index=0; index < a_node.node->m_count; index++)
             {
+                contPoint++;
                 current_score = computeScoreLin(a_node.node->m_branch[index].m_rect.m_min, query);
                 if(current_score < resultList.top().score){
                     resultList.pop();
@@ -1805,7 +1800,6 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::linearTopK
                 }
             }
         }
-        m++;
     }
 
 
@@ -1813,6 +1807,10 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::linearTopK
         std::cout << i << " resultList score: " << resultList.top().score << std::endl;
         resultList.pop();
     }*/
+
+    std::cout << "contBox: " << contBox << std::endl;
+    std::cout << "contLeaf: " << contLeaf << std::endl;
+    std::cout << "contPoint: " << contPoint << std::endl;
 
     return resultList;
 }

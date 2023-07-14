@@ -11,7 +11,8 @@ typedef int ValueType;
 typedef std::vector<double> MyTuple;
 
 
-#define DIM 4
+#define DIM 2
+#define BETA 0.66
 
 
 struct Rect
@@ -98,7 +99,28 @@ double* convertDoubleVectorToIntPointer(const std::vector<double>& doubleVec)
     return intPtr;
 }
 
-std::vector<MyTuple> readCSV(const std::string& filename, std::vector<double> query) {
+double dist_line_point(const std::vector<double>& point, const std::vector<double>& query) {
+    double dist = 0.0;
+    int len = query.size();
+
+    for (int i = 0; i < len; i++) {
+        double num = 0.0;
+        double den = 0.0;
+
+        for (int j = 0; j < len; j++) {
+            num += query[j] * point[j];
+            den += query[j] * query[j];
+        }
+
+        double d = point[i] - (query[i] * num / den);
+        d = d * d;
+        dist += d;
+    }
+
+    return std::sqrt(dist);
+}
+
+std::vector<MyTuple> readCSVLin(const std::string& filename, std::vector<double> query) {
     std::vector<MyTuple> data;  // Vector to store the vectors of values
     double score;
     int i;
@@ -133,6 +155,45 @@ std::vector<MyTuple> readCSV(const std::string& filename, std::vector<double> qu
     return data;
 }
 
+std::vector<MyTuple> readCSVDir(const std::string& filename, std::vector<double> query) {
+    std::vector<MyTuple> data;  // Vector to store the vectors of values
+    double score;
+    int i;
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Error opening file: " << filename << std::endl;
+        return data;  // Return an empty vector
+    }
+    std::string line;
+    std::getline(file, line);  // Skip the first line (header)
+    while (std::getline(file, line)) {
+        std::istringstream iss(line);
+        std::string token;
+        std::vector<double> values;
+        score = 0;
+        // Skip the first value in each line
+        std::getline(iss, token, ',');
+
+        i= 0;
+        // Read the remaining values
+        while (std::getline(iss, token, ',')) {
+            values.push_back(std::stod(token));
+            score += std::stod(token) * query[i];
+            i++;
+        }
+
+        std::vector<double> point = {values.begin(), values.end()};
+        score = BETA * score + (1 - BETA) * dist_line_point(point, query);
+        values.push_back(score);
+        // Add the vector of values to the vector
+        data.push_back(values);
+    }
+
+    file.close();
+    return data;
+}
+
+
 
 
 void processRow(const MyTuple values, std::vector<double> query) {
@@ -147,13 +208,14 @@ void processRow(const MyTuple values, std::vector<double> query) {
 
 int main() {
     //
-    typedef RTree<ValueType, double, DIM, float, 4> MyTree;
+    typedef RTree<ValueType, double, DIM, float, 100> MyTree;
     MyTree tree;
 
     //std::string filePath = "../datasets/dataset_small.csv";
-    //std::string filePath = "../datasets/cor_neg_1k_2.csv";
-    std::string filePath = "../datasets/cor_neg_1M_4.csv";
+    std::string filePath = "../datasets/cor_neg_1k_2.csv";
+    //std::string filePath = "../datasets/cor_neg_1M_4.csv";
 
+    //Tree creation
     std::vector<Rect> rectangles = createRectanglesFromCSV(filePath, DIM);
 
     int i = 0;
@@ -170,31 +232,48 @@ int main() {
         i++;
     }
 
-    /*TODO: vedere implementazione di std::vector<typename RTREE_QUAL::Rect> RTREE_QUAL::ListTree() const per capire
-    come iterare tra i vari nodi e avere accesso ai nodi interni */
     std::vector<double> query {0.5, 0.5};
     int k = 10;
+
+    //Linear Rtree
+
+    std::cout << "LINEAR RTREE" << std::endl;
     auto startTime = std::chrono::high_resolution_clock::now();
     tree.linearTopKQueryRTree(k, query);
     auto endTime = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime);
 
-
     std::cout << "Execution time: " << duration.count() << " microseconds." << std::endl;
 
-
+    //Linear Sequential
+    std::cout << "LINEAR SEQUENTIAL" << std::endl;
     auto startTimeSeq = std::chrono::high_resolution_clock::now();
 
-    std::vector<MyTuple> tuples = readCSV(filePath, query);
-    std::sort(tuples.begin(), tuples.end(), compareLastColumn);
+    std::vector<MyTuple> tuplesLin = readCSVLin(filePath, query);
+    std::sort(tuplesLin.begin(), tuplesLin.end(), compareLastColumn);
 
     auto endTimeSeq = std::chrono::high_resolution_clock::now();
     auto durationSeq = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeSeq - startTimeSeq);
 
     for (int i = k-1; i >= 0; i--){
-        std::cout << i << " tuples score: " << tuples[i].back() << std::endl;
+        std::cout << i << " tuples score: " << tuplesLin[i].back() << std::endl;
     }
     std::cout << "Execution time: " << durationSeq.count() << " milliseconds." << std::endl;
+
+    //Directional Sequential
+    std::cout << "DIRECTIONAL SEQUENTIAL" << std::endl;
+    auto startTimeDirSeq = std::chrono::high_resolution_clock::now();
+
+    std::vector<MyTuple> tuplesDir = readCSVDir(filePath, query);
+    std::sort(tuplesDir.begin(), tuplesDir.end(), compareLastColumn);
+
+    auto endTimeDirSeq = std::chrono::high_resolution_clock::now();
+    auto durationDirSeq = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeDirSeq - startTimeDirSeq);
+
+    for (i = k-1; i >= 0; i--){
+        std::cout << i << " tuples score: " << tuplesDir[i].back() << std::endl;
+    }
+    std::cout << "Execution time: " << durationDirSeq.count() << " milliseconds." << std::endl;
 
     return 0;
 

@@ -3,12 +3,13 @@
 #include <vector>
 #include <fstream>
 #include <sstream>
+#include <chrono>
 
 using namespace std;
 
 typedef int ValueType;
 
-#define DIM 2
+#define DIM 4
 
 struct Rect
 {
@@ -96,7 +97,8 @@ int main() {
     MyTree tree;
 
     //std::string filePath = "datasets/dataset_small.csv";
-    std::string filePath = "../datasets/dataset_small.csv";
+    //std::string filePath = "../datasets/cor_neg_1k_2.csv";
+    std::string filePath = "../datasets/cor_neg_1M_4.csv";
 
     std::vector<Rect> rectangles = createRectanglesFromCSV(filePath, DIM);
 
@@ -114,27 +116,16 @@ int main() {
         i++;
     }
 
-    /*
-    auto list = tree.ListTree();
-    int counter = 0;
-    for (auto aabb: list) {
-        cout << "TreeList [" << counter++ << "]: ";
-        for (double j : aabb.m_min) {
-            cout << j << " ";
-        }
-        cout << "; ";
-        for (double j : aabb.m_max){
-            cout << j << " ";
-        }
-        cout << endl;
-    }
-    */
-
     /*TODO: vedere implementazione di std::vector<typename RTREE_QUAL::Rect> RTREE_QUAL::ListTree() const per capire
     come iterare tra i vari nodi e avere accesso ai nodi interni */
     std::vector<double> query {0.5, 0.5};
     int k = 10;
-    tree.myQuery(k, query);
+    auto startTime = std::chrono::high_resolution_clock::now();
+    tree.linearTopKQueryRTree(k, query);
+    auto endTime = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+
+    std::cout << "Execution time: " << duration.count() << " milliseconds." << std::endl;
 
     return 0;
 

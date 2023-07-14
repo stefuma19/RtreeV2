@@ -15,6 +15,7 @@
 #include <functional>
 #include <vector>
 #include <iostream>
+#include <limits>
 
 #define ASSERT assert // RTree uses ASSERT( condition )
 #ifndef Min
@@ -308,41 +309,23 @@ public:
     Branch m_branch[MAXNODES];                    ///< Branch
   };
 
-    // Define the Object class
-    struct NodeWithScore {
-        Node* node;
-        double score;
+  // Define the Object class
+  struct NodeWithScore {
+      Node* node;
+      double score;
 
-        bool operator<(const NodeWithScore& a) {
-            return score < a->score;
-        }
-    };
+      bool operator<(const NodeWithScore& a) const{
+          return score > a.score;
+      }
+  };
+  struct BranchWithScore {
+      Branch* branch;
+      double score;
 
-    struct BranchWithScore {
-        Branch* branch;
-        double score;
-
-        bool operator()(const BranchWithScore& a, const BranchWithScore& b) {
-            return a->score > b->score;
-        }
-    };
-
-    /*
-// Define a custom comparison functor for comparing Objects based on their values
-    struct CompareNodeScore {
-        bool operator()(const NodeWithScore& a, const NodeWithScore& b) const {
-            return a.score < b.score;
-        }
-
-    };
-
-    struct CompareNodeScoreResultList {
-        bool operator()(const NodeWithScore& a, const NodeWithScore& b) const {
-            return a.score > b.score;
-        }
-
-    };
-     */
+      bool operator<(const BranchWithScore& a) const {
+          return score < a.score;
+      }
+  };
 
   /// A link list of nodes for reinsertion after a delete operation
   struct ListNode
@@ -411,7 +394,7 @@ public:
 public:
   // return all the AABBs that form the RTree
   std::vector<Rect> ListTree() const;
-  std::priority_queue<BranchWithScore*> myQuery(int k, std::vector<double> query);
+  std::priority_queue<BranchWithScore> linearTopKQueryRTree(int k, std::vector<double> query);
 };
 
 // Because there is not stream support, this is a quick and dirty file I/O helper.
@@ -1743,28 +1726,29 @@ double computeMinScoreLin(double* vertex1, std::vector<double> query) {
 }
 
 RTREE_TEMPLATE
-std::priority_queue<typename RTREE_QUAL::BranchWithScore*> RTREE_QUAL::myQuery(int k, std::vector<double> query)
+std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::linearTopKQueryRTree(int k, std::vector<double> query)
 {
             ASSERT(m_root);
             ASSERT(m_root->m_level >= 0);
 
     //std::vector<NodeWithScore> resultList;
-    std::priority_queue<BranchWithScore*> resultList;
+    double current_score;
+    NodeWithScore nodeWithScore;
+    BranchWithScore branchWithScore;
+
+    std::priority_queue<BranchWithScore> resultList;
     //TODO: ATTENZIONE. PER LA RESULT LIST LA PRIORITÀ DEVE ESSERE INVERSA RISPETTO A QUELLA DELLA CODA DI VISITA
     //TODO: IN PARTICOLARE VOGLIAMO CHE CON LA POP VENGA ESTRATTO IL RISULTATO CON PUNTEGGIO PEGGIORE
 
-    double current_score;
-
     // Priority queue to store nodes based on their level
-    std::priority_queue<NodeWithScore*> toVisit;
+    std::priority_queue<NodeWithScore> toVisit;
 
     for(int i = 0; i < m_root->m_count; i++)
     {
-        auto *nodeWithScore = new NodeWithScore();
-        nodeWithScore->node = m_root->m_branch[i].m_child;
+        nodeWithScore.node = m_root->m_branch[i].m_child;
         //std::cout << "nodeWithScore min: " << m_root->m_branch[i].m_rect.m_min[0];
         //std::cout << " nodeWithScore max " << m_root->m_branch[i].m_rect.m_max[0];
-        nodeWithScore->score = computeMinScoreLin(m_root->m_branch[i].m_rect.m_min, query);
+        nodeWithScore.score = computeMinScoreLin(m_root->m_branch[i].m_rect.m_min, query);
         //std::cout << "nodeWithScore score: " << nodeWithScore->score << std::endl;
         toVisit.push(nodeWithScore);
     }
@@ -1775,36 +1759,35 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore*> RTREE_QUAL::myQuery(i
     }*/
 
     for(int i = 0; i < k; i++){
-        auto *branchWithScore = new BranchWithScore();
-        branchWithScore->branch = nullptr;
-        branchWithScore->score = std::numeric_limits<double>::max();
+        branchWithScore.branch = nullptr;
+        branchWithScore.score = std::numeric_limits<double>::max();
         resultList.push(branchWithScore);
     }
 
     //std::cout << "RIGA NUOVA" << std::endl;
 
-    /*for(int l = 0; l < k; l++){
-        std::cout << l << " to visit score: " << toVisit.top()->score << std::endl;
-        toVisit.pop();
-    }*/
+    //for(int l = 0; l < k; l++){
+    //    std::cout << l << " to visit score: " << toVisit.top().score << std::endl;
+    //    toVisit.pop();
+    //}
 
+    NodeWithScore a_node;
 
     int m = 0;
     while (!toVisit.empty()) {
-        NodeWithScore* a_node = toVisit.top(); //Get the highest priority Object
+        a_node = toVisit.top(); //Get the highest priority Object
         toVisit.pop();
 
-        if(a_node->node->IsLeaf())
+        if(a_node.node->IsLeaf())
         {
             // This is a leaf node
-            for(int index=0; index < a_node->node->m_count; index++)
+            for(int index=0; index < a_node.node->m_count; index++)
             {
-                current_score = computeScoreLin(a_node->node->m_branch[index].m_rect.m_min, query);
-                if(current_score < resultList.top()->score){
+                current_score = computeScoreLin(a_node.node->m_branch[index].m_rect.m_min, query);
+                if(current_score < resultList.top().score){
                     resultList.pop();
-                    auto* branchWithScore = new BranchWithScore();
-                    branchWithScore->branch = &a_node->node->m_branch[index];
-                    branchWithScore->score = current_score;
+                    branchWithScore.branch = &a_node.node->m_branch[index];
+                    branchWithScore.score = current_score;
                     resultList.push(branchWithScore);
                 }
             }
@@ -1812,19 +1795,24 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore*> RTREE_QUAL::myQuery(i
         else
         {
             // This is an internal node in the tree
-            for(int index=0; index < a_node->node->m_count; index++)
+            for(int index=0; index < a_node.node->m_count; index++)
             {
-                current_score = computeMinScoreLin(a_node->node->m_branch[index].m_rect.m_min, query);
-                if(current_score < resultList.top()->score)  {
-                    auto *nodeWithScore = new NodeWithScore();
-                    nodeWithScore->node = a_node->node->m_branch[index].m_child;
-                    nodeWithScore->score = current_score;
+                current_score = computeMinScoreLin(a_node.node->m_branch[index].m_rect.m_min, query);
+                if(current_score < resultList.top().score)  {
+                    nodeWithScore.node = a_node.node->m_branch[index].m_child;
+                    nodeWithScore.score = current_score;
                     toVisit.push(nodeWithScore);
                 }
             }
         }
         m++;
     }
+
+    for(int i = 0; i < k; i++){
+        std::cout << i << " resultList score: " << resultList.top().score << std::endl;
+        resultList.pop();
+    }
+
     return resultList;
 }
 

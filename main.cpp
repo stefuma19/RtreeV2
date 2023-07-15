@@ -4,6 +4,7 @@
 #include <fstream>
 #include <sstream>
 #include <chrono>
+#include <nlopt.hpp>
 
 using namespace std;
 
@@ -11,7 +12,7 @@ typedef int ValueType;
 typedef std::vector<double> MyTuple;
 
 
-#define DIM 4
+#define DIM 2
 #define BETA 0.66
 
 
@@ -194,15 +195,15 @@ std::vector<MyTuple> readCSVDir(const std::string& filename, std::vector<double>
 }
 
 
-
 int main() {
     //
-    typedef RTree<ValueType, double, DIM, float, 20> MyTree;
+    typedef RTree<ValueType, double, DIM, float, 100> MyTree;
     MyTree tree;
 
     //std::string filePath = "../datasets/dataset_small.csv";
     //std::string filePath = "../datasets/cor_neg_1k_2.csv";
-    std::string filePath = "../datasets/cor_neg_1M_4.csv";
+    std::string filePath = "../datasets/cor_neg_1M_2.csv";
+    //std::string filePath = "../datasets/cor_neg_1M_4.csv";
 
     //Tree creation
     std::vector<Rect> rectangles = createRectanglesFromCSV(filePath, DIM);
@@ -261,9 +262,11 @@ int main() {
     auto endTimeLinSeq = std::chrono::high_resolution_clock::now();
     auto durationLinSeq = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeLinSeq - startTimeLinSeq);
 
+    /*
     for (int i = k-1; i >= 0; i--){
         std::cout << i << " tuples score: " << tuplesLin[i].back() << std::endl;
     }
+     */
     std::cout << "Execution time: " << durationLinSeq.count() << " milliseconds." << std::endl;
 
     //Directional Sequential
@@ -276,9 +279,11 @@ int main() {
     auto endTimeDirSeq = std::chrono::high_resolution_clock::now();
     auto durationDirSeq = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeDirSeq - startTimeDirSeq);
 
+
     for (i = k-1; i >= 0; i--){
         std::cout << i << " tuples score: " << tuplesDir[i].back() << std::endl;
     }
+
     std::cout << "Execution time: " << durationDirSeq.count() << " milliseconds." << std::endl;
 
     return 0;

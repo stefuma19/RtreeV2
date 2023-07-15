@@ -16,8 +16,10 @@
 #include <vector>
 #include <iostream>
 #include <limits>
+#include <nlopt.h>
 
 #define BETA 0.66
+#define DIM 2
 #define ASSERT assert // RTree uses ASSERT( condition )
 #ifndef Min
   #define Min std::min
@@ -1720,7 +1722,7 @@ double computeScoreLin(double* vertex1, std::vector<double> query) {
     return score;
 }
 
-double dist_line_point(double *point, const std::vector<double>& query) {
+double dist_line_point(const double *point, const std::vector<double>& query) {
     double dist = 0.0;
     int len = query.size();
 
@@ -1739,6 +1741,91 @@ double dist_line_point(double *point, const std::vector<double>& query) {
     }
 
     return std::sqrt(dist);
+}
+
+double dist_line_point2(const double *point, const double* query) {
+    double dist = 0.0;
+    int len = DIM;
+
+    for (int i = 0; i < len; i++) {
+        double num = 0.0;
+        double den = 0.0;
+
+        for (int j = 0; j < len; j++) {
+            num += query[j] * point[j];
+            den += query[j] * query[j];
+        }
+
+        double d = point[i] - (query[i] * num / den);
+        d = d * d;
+        dist += d;
+    }
+
+    return std::sqrt(dist);
+}
+
+double costFunction(unsigned n, const double *x, double *grad, void *data)
+{
+
+    auto* query = reinterpret_cast<double*>(data);
+
+    // return value is the value of the cost function
+    double score = 0;
+    for(int i = 0; i < DIM; i++) {
+        score += x[i] * query[i];
+    }
+    return BETA * score + (1-BETA) * dist_line_point2(x, query);
+}
+
+double quadratic_minimization(const double* vertex1, const double* vertex2, std::vector<double> queryVec) {
+
+    double lb[DIM];
+    double ub[DIM];
+    for (int i = 0; i < DIM; i++) {
+        lb[i] = vertex1[i];
+        ub[i] = vertex2[i];
+    }
+
+    double query[DIM];
+    for(int i = 0; i < DIM; i++) {
+        query[i] = queryVec[i];
+    }
+    // Copy elements from vector to array
+    std::copy(queryVec.begin(), queryVec.end(), query);
+
+    // create the optimization problem
+    // opaque pointer type
+    nlopt_opt opt;
+    opt = nlopt_create(NLOPT_LN_COBYLA, DIM);
+
+    nlopt_set_lower_bounds(opt,lb);
+    nlopt_set_upper_bounds(opt,ub);
+
+    nlopt_set_min_objective(opt, costFunction, query);
+
+    nlopt_set_xtol_rel(opt, 1e-4);
+
+// initial guess
+    double x[DIM];
+    for (int i = 0; i < DIM; i++) {
+        x[i] = ub[i];
+    }
+
+    double minf;
+
+    nlopt_result res=nlopt_optimize(opt, x,&minf);
+
+
+    /*
+    if (res < 0) {
+        printf("nlopt failed!\n");
+    }
+    else {
+        printf("found minimum at f(%g,%g) = %0.10g\n", x[0], x[1], minf);
+    }
+     */
+
+    return minf;
 }
 
 double computeScoreDir(double* vertex1, std::vector<double> query) {
@@ -1871,8 +1958,7 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
     for(int i = 0; i < m_root->m_count; i++)
     {
         nodeWithScore.node = m_root->m_branch[i].m_child;
-        //TODO: quadratic minimization
-        nodeWithScore.score = computeMinScoreLin(m_root->m_branch[i].m_rect.m_min, query);
+        nodeWithScore.score = quadratic_minimization(m_root->m_branch[i].m_rect.m_min, m_root->m_branch[i].m_rect.m_max, query);
         toVisit.push(nodeWithScore);
     }
 
@@ -1890,13 +1976,17 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
         toVisit.pop();
         contBox++;
         double temp = resultList.top().score;
-        /*if(a_node.score > temp){
+        if(a_node.score > temp){
+            for(int i = 0; i < k; i++){
+                std::cout << i << " resultList score: " << resultList.top().score << std::endl;
+                resultList.pop();
+            }
             std::cout << "contBox: " << contBox << std::endl;
             std::cout << "contLeaf: " << contLeaf << std::endl;
             std::cout << "contPoint: " << contPoint << std::endl;
 
             return resultList;
-        }*/
+        }
         if(a_node.node->IsLeaf())
         {
             contLeaf++;
@@ -1918,13 +2008,12 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
             // This is an internal node in the tree
             for(int index=0; index < a_node.node->m_count; index++)
             {
-                //TODO: quadratic minimization
-                current_score = computeMinScoreLin(a_node.node->m_branch[index].m_rect.m_min, query);
-                //if(current_score < resultList.top().score)  {
-                nodeWithScore.node = a_node.node->m_branch[index].m_child;
-                nodeWithScore.score = current_score;
-                toVisit.push(nodeWithScore);
-                //}
+                current_score = quadratic_minimization(a_node.node->m_branch[index].m_rect.m_min, a_node.node->m_branch[index].m_rect.m_max, query);
+                if(current_score < resultList.top().score)  {
+                    nodeWithScore.node = a_node.node->m_branch[index].m_child;
+                    nodeWithScore.score = current_score;
+                    toVisit.push(nodeWithScore);
+                }
             }
         }
     }

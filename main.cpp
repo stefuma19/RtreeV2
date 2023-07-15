@@ -12,7 +12,7 @@ typedef int ValueType;
 typedef std::vector<double> MyTuple;
 
 
-#define DIM 4
+#define DIM 2
 #define BETA 0.66
 
 
@@ -201,9 +201,9 @@ int main() {
     MyTree tree;
 
     //std::string filePath = "../datasets/dataset_small.csv";
-    //std::string filePath = "../datasets/cor_neg_1k_2.csv";
+    std::string filePath = "../datasets/cor_neg_1k_2.csv";
     //std::string filePath = "../datasets/cor_neg_1M_2.csv";
-    std::string filePath = "../datasets/cor_neg_1M_4.csv";
+    //std::string filePath = "../datasets/cor_neg_1M_4.csv";
 
     //Tree creation
     std::vector<Rect> rectangles = createRectanglesFromCSV(filePath, DIM);
@@ -229,29 +229,51 @@ int main() {
     std::cout << "contLeaf: " << numLeaves << std::endl;
     std::cout << "contPoint: " << numPoints << std::endl;
 
-    std::vector<double> query {0.25, 0.25, 0.25, 0.25};
+
+    std::vector<double> query {0.5, 0.5};
     int k = 10;
 
-    //Linear Rtree
+    std::vector<double> values;
+    int numSteps = 50;  // Number of steps
+    double stepSize = 1.0 / numSteps;  // Step size
 
-    std::cout << "----------------LINEAR RTREE----------------" << std::endl;
-    auto startTimeLinRT = std::chrono::high_resolution_clock::now();
-    tree.linearTopKQueryRTree(k, query);
-    auto endTimeLinRT = std::chrono::high_resolution_clock::now();
-    auto durationLinRT = std::chrono::duration_cast<std::chrono::microseconds>(endTimeLinRT - startTimeLinRT);
+    for (int i = 0; i <= numSteps; i++) {
+        double value = i * stepSize;
+        values.push_back(value);
+    }
 
-    std::cout << "Execution time: " << durationLinRT.count() << " microseconds." << std::endl;
 
-    //Directional Rtree
+    double timeLinRT = 0;
+    double timeDirRT = 0;
+    double timeLinSeq = 0;
+    double timeDirSeq = 0;
+    //Execution of 50 queries
+    for(int j = 0; j<=numSteps; j++){
 
-    std::cout << "----------------DIRECTIONAL RTREE----------------" << std::endl;
-    auto startTimeDirRT = std::chrono::high_resolution_clock::now();
-    tree.DirectionalTopKQueryRTree(k, query);
-    auto endTimeDirRT = std::chrono::high_resolution_clock::now();
-    auto durationDirRT = std::chrono::duration_cast<std::chrono::microseconds>(endTimeDirRT - startTimeDirRT);
+        query[0] = values[j];
+        query[1] = values[numSteps - j];
+        //std::cout << "Query:" << query[0] << " , " << query[1] << std::endl;
 
-    std::cout << "Execution time: " << durationDirRT.count() << " microseconds." << std::endl;
+        //Linear Rtree
 
+        std::cout << "----------------LINEAR RTREE----------------" << std::endl;
+        auto startTimeLinRT = std::chrono::high_resolution_clock::now();
+        tree.linearTopKQueryRTree(k, query);
+        auto endTimeLinRT = std::chrono::high_resolution_clock::now();
+        auto durationLinRT = std::chrono::duration_cast<std::chrono::microseconds>(endTimeLinRT - startTimeLinRT);
+
+        timeLinRT += durationLinRT.count();
+        //Directional Rtree
+
+        std::cout << "----------------DIRECTIONAL RTREE----------------" << std::endl;
+        auto startTimeDirRT = std::chrono::high_resolution_clock::now();
+        tree.DirectionalTopKQueryRTree(k, query);
+        auto endTimeDirRT = std::chrono::high_resolution_clock::now();
+        auto durationDirRT = std::chrono::duration_cast<std::chrono::microseconds>(endTimeDirRT - startTimeDirRT);
+
+        timeDirRT += durationDirRT.count();
+
+    }
     //Linear Sequential
     std::cout << "----------------LINEAR SEQUENTIAL----------------" << std::endl;
     auto startTimeLinSeq = std::chrono::high_resolution_clock::now();
@@ -263,11 +285,11 @@ int main() {
     auto durationLinSeq = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeLinSeq - startTimeLinSeq);
 
 
-    for (int i = k-1; i >= 0; i--){
+    /*for (int i = k-1; i >= 0; i--){
         std::cout << i << " tuples score: " << tuplesLin[i].back() << std::endl;
-    }
+    }*/
 
-    std::cout << "Execution time: " << durationLinSeq.count() << " milliseconds." << std::endl;
+    timeLinSeq += durationLinSeq.count();
 
     //Directional Sequential
     std::cout << "----------------DIRECTIONAL SEQUENTIAL----------------" << std::endl;
@@ -280,12 +302,15 @@ int main() {
     auto durationDirSeq = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeDirSeq - startTimeDirSeq);
 
 
-    for (i = k-1; i >= 0; i--){
+    /*for (i = k-1; i >= 0; i--){
         std::cout << i << " tuples score: " << tuplesDir[i].back() << std::endl;
-    }
+    }*/
 
-    std::cout << "Execution time: " << durationDirSeq.count() << " milliseconds." << std::endl;
+    timeDirSeq += durationDirSeq.count();
+    std::cout << "Execution time LinRT: " << timeLinRT/(numSteps + 1) << " microseconds." << std::endl;
+    std::cout << "Execution time DirRT: " << timeDirRT/(numSteps + 1) << " microseconds." << std::endl;
+    std::cout << "Execution time LinSeq: " << timeLinSeq << " milliseconds." << std::endl;
+    std::cout << "Execution time DirSeq: " << timeDirSeq << " milliseconds." << std::endl;
 
     return 0;
-
 }

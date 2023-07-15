@@ -12,7 +12,7 @@ typedef int ValueType;
 typedef std::vector<double> MyTuple;
 
 
-#define DIM 2
+#define DIM 4
 #define BETA 0.66
 
 
@@ -202,8 +202,8 @@ int main() {
 
     //std::string filePath = "../datasets/dataset_small.csv";
     //std::string filePath = "../datasets/cor_neg_1k_2.csv";
-    std::string filePath = "../datasets/cor_neg_1M_2.csv";
-    //std::string filePath = "../datasets/cor_neg_1M_4.csv";
+    //std::string filePath = "../datasets/cor_neg_1M_2.csv";
+    std::string filePath = "../datasets/cor_neg_1M_4.csv";
 
     //Tree creation
     std::vector<Rect> rectangles = createRectanglesFromCSV(filePath, DIM);
@@ -229,7 +229,7 @@ int main() {
     std::cout << "contLeaf: " << numLeaves << std::endl;
     std::cout << "contPoint: " << numPoints << std::endl;
 
-    std::vector<double> query {0.5, 0.5};
+    std::vector<double> query {0.25, 0.25, 0.25, 0.25};
     int k = 10;
 
     //Linear Rtree
@@ -262,11 +262,11 @@ int main() {
     auto endTimeLinSeq = std::chrono::high_resolution_clock::now();
     auto durationLinSeq = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeLinSeq - startTimeLinSeq);
 
-    /*
+
     for (int i = k-1; i >= 0; i--){
         std::cout << i << " tuples score: " << tuplesLin[i].back() << std::endl;
     }
-     */
+
     std::cout << "Execution time: " << durationLinSeq.count() << " milliseconds." << std::endl;
 
     //Directional Sequential

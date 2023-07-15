@@ -19,7 +19,7 @@
 #include <nlopt.h>
 
 #define BETA 0.66
-#define DIM 2
+#define DIM 4
 #define ASSERT assert // RTree uses ASSERT( condition )
 #ifndef Min
   #define Min std::min
@@ -1777,14 +1777,16 @@ double costFunction(unsigned n, const double *x, double *grad, void *data)
     return BETA * score + (1-BETA) * dist_line_point2(x, query);
 }
 
-double quadratic_minimization(const double* vertex1, const double* vertex2, std::vector<double> queryVec) {
+double quadratic_minimization(double* vertex1,  double* vertex2, std::vector<double> queryVec) {
 
+    /*
     double lb[DIM];
     double ub[DIM];
     for (int i = 0; i < DIM; i++) {
         lb[i] = vertex1[i];
         ub[i] = vertex2[i];
     }
+    */
 
     double query[DIM];
     for(int i = 0; i < DIM; i++) {
@@ -1796,24 +1798,27 @@ double quadratic_minimization(const double* vertex1, const double* vertex2, std:
     // create the optimization problem
     // opaque pointer type
     nlopt_opt opt;
-    opt = nlopt_create(NLOPT_LN_COBYLA, DIM);
+    opt = nlopt_create(NLOPT_LN_NELDERMEAD, DIM);
 
-    nlopt_set_lower_bounds(opt,lb);
-    nlopt_set_upper_bounds(opt,ub);
+    nlopt_set_lower_bounds(opt,vertex1);
+    nlopt_set_upper_bounds(opt,vertex2);
 
     nlopt_set_min_objective(opt, costFunction, query);
 
-    nlopt_set_xtol_rel(opt, 1e-4);
+    nlopt_set_xtol_rel(opt, 1e-2);
 
-// initial guess
+
+    // initial guess
+    /*
     double x[DIM];
     for (int i = 0; i < DIM; i++) {
-        x[i] = ub[i];
+        x[i] = vertex2[i];
     }
-
+    */
     double minf;
 
-    nlopt_result res=nlopt_optimize(opt, x,&minf);
+    //Vertex 2 is the initial guess
+    nlopt_result res=nlopt_optimize(opt, vertex1,&minf);
 
 
     /*

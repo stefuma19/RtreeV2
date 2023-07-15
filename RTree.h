@@ -397,8 +397,8 @@ public:
 public:
   // return all the AABBs that form the RTree
   std::vector<Rect> ListTree() const;
-  std::priority_queue<BranchWithScore> linearTopKQueryRTree(int k, std::vector<double> query);
-  std::priority_queue<BranchWithScore> DirectionalTopKQueryRTree(int k, std::vector<double> query);
+  std::priority_queue<BranchWithScore> linearTopKQueryRTree(int k, std::vector<double> query, int* box, int* leaves, int* point);
+  std::priority_queue<BranchWithScore> DirectionalTopKQueryRTree(int k, std::vector<double> query, int* box, int* leaves, int* point);
   void CountBoxesLeavesAndPoints(int* a_boxCount, int* a_leafCount, int* a_pointCount);
 };
 
@@ -1851,7 +1851,7 @@ double computeMinScoreLin(double* vertex1, std::vector<double> query) {
 }
 
 RTREE_TEMPLATE
-std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::linearTopKQueryRTree(int k, std::vector<double> query)
+std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::linearTopKQueryRTree(int k, std::vector<double> query, int* box, int* leaves, int* point)
 {
             ASSERT(m_root);
             ASSERT(m_root->m_level >= 0);
@@ -1891,9 +1891,12 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::linearTopK
         contBox++;
         double temp = resultList.top().score;
         if(a_node.score > temp){
-            std::cout << "contBox: " << contBox << std::endl;
+            /*std::cout << "contBox: " << contBox << std::endl;
             std::cout << "contLeaf: " << contLeaf << std::endl;
-            std::cout << "contPoint: " << contPoint << std::endl;
+            std::cout << "contPoint: " << contPoint << std::endl;*/
+            *box += contBox;
+            *leaves += contLeaf;
+            *point += contPoint;
 
             return resultList;
         }
@@ -1934,15 +1937,18 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::linearTopK
         resultList.pop();
     }*/
 
-    std::cout << "contBox: " << contBox << std::endl;
+    /*std::cout << "contBox: " << contBox << std::endl;
     std::cout << "contLeaf: " << contLeaf << std::endl;
-    std::cout << "contPoint: " << contPoint << std::endl;
+    std::cout << "contPoint: " << contPoint << std::endl;*/
+    *box += contBox;
+    *leaves += contLeaf;
+    *point += contPoint;
 
     return resultList;
 }
 
 RTREE_TEMPLATE
-std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::DirectionalTopKQueryRTree(int k, std::vector<double> query)
+std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::DirectionalTopKQueryRTree(int k, std::vector<double> query, int* box, int* leaves, int* point)
 {
             ASSERT(m_root);
             ASSERT(m_root->m_level >= 0);
@@ -1986,9 +1992,12 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
                 std::cout << i << " resultList score: " << resultList.top().score << std::endl;
                 resultList.pop();
             }*/
-            std::cout << "contBox: " << contBox << std::endl;
+            /*std::cout << "contBox: " << contBox << std::endl;
             std::cout << "contLeaf: " << contLeaf << std::endl;
-            std::cout << "contPoint: " << contPoint << std::endl;
+            std::cout << "contPoint: " << contPoint << std::endl;*/
+            *box += contBox;
+            *leaves += contLeaf;
+            *point += contPoint;
 
             return resultList;
         }
@@ -2029,9 +2038,12 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
         resultList.pop();
     }
     */
-    std::cout << "contBox: " << contBox << std::endl;
+    /*std::cout << "contBox: " << contBox << std::endl;
     std::cout << "contLeaf: " << contLeaf << std::endl;
-    std::cout << "contPoint: " << contPoint << std::endl;
+    std::cout << "contPoint: " << contPoint << std::endl;*/
+    *box += contBox;
+    *leaves += contLeaf;
+    *point += contPoint;
 
     return resultList;
 }

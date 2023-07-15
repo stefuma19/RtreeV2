@@ -247,6 +247,16 @@ int main() {
     double timeDirRT = 0;
     double timeLinSeq = 0;
     double timeDirSeq = 0;
+
+    int numBoxLin = 0;
+    int numLeavesLin = 0;
+    int numPointLin = 0;
+
+    int numBoxDir = 0;
+    int numLeavesDir = 0;
+    int numPointDir = 0;
+
+
     //Execution of 50 queries
     for(int j = 0; j<=numSteps; j++){
 
@@ -258,7 +268,7 @@ int main() {
 
         std::cout << "----------------LINEAR RTREE----------------" << std::endl;
         auto startTimeLinRT = std::chrono::high_resolution_clock::now();
-        tree.linearTopKQueryRTree(k, query);
+        tree.linearTopKQueryRTree(k, query, &numBoxLin, &numLeavesLin, &numPointLin);
         auto endTimeLinRT = std::chrono::high_resolution_clock::now();
         auto durationLinRT = std::chrono::duration_cast<std::chrono::microseconds>(endTimeLinRT - startTimeLinRT);
 
@@ -267,7 +277,7 @@ int main() {
 
         std::cout << "----------------DIRECTIONAL RTREE----------------" << std::endl;
         auto startTimeDirRT = std::chrono::high_resolution_clock::now();
-        tree.DirectionalTopKQueryRTree(k, query);
+        tree.DirectionalTopKQueryRTree(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
         auto endTimeDirRT = std::chrono::high_resolution_clock::now();
         auto durationDirRT = std::chrono::duration_cast<std::chrono::microseconds>(endTimeDirRT - startTimeDirRT);
 
@@ -311,6 +321,14 @@ int main() {
     std::cout << "Execution time DirRT: " << timeDirRT/(numSteps + 1) << " microseconds." << std::endl;
     std::cout << "Execution time LinSeq: " << timeLinSeq << " milliseconds." << std::endl;
     std::cout << "Execution time DirSeq: " << timeDirSeq << " milliseconds." << std::endl;
+
+    std::cout << "Accesses to Box Linear: " << numBoxLin/(numSteps + 1) << std::endl;
+    std::cout << "Accesses to Leaves Linear: " << numLeavesLin/(numSteps + 1) << std::endl;
+    std::cout << "Accesses to Points Linear: " << numPointLin/(numSteps + 1) << std::endl;
+
+    std::cout << "Accesses to Box Directional: " << numBoxDir/(numSteps + 1) << std::endl;
+    std::cout << "Accesses to Leaves Directional: " << numLeavesDir/(numSteps + 1) << std::endl;
+    std::cout << "Accesses to Points Directional: " << numPointDir/(numSteps + 1) << std::endl;
 
     return 0;
 }

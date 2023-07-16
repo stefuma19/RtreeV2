@@ -19,7 +19,7 @@
 #include <nlopt.h>
 
 #define BETA 0.66
-#define DIM 4
+#define DIM 2
 #define ASSERT assert // RTree uses ASSERT( condition )
 #ifndef Min
   #define Min std::min
@@ -1779,14 +1779,14 @@ double costFunction(unsigned n, const double *x, double *grad, void *data)
 
 double quadratic_minimization(double* vertex1,  double* vertex2, std::vector<double> queryVec) {
 
-    /*
+
     double lb[DIM];
     double ub[DIM];
     for (int i = 0; i < DIM; i++) {
         lb[i] = vertex1[i];
         ub[i] = vertex2[i];
     }
-    */
+
 
     double query[DIM];
     for(int i = 0; i < DIM; i++) {
@@ -1800,8 +1800,8 @@ double quadratic_minimization(double* vertex1,  double* vertex2, std::vector<dou
     nlopt_opt opt;
     opt = nlopt_create(NLOPT_LN_NELDERMEAD, DIM);
 
-    nlopt_set_lower_bounds(opt,vertex1);
-    nlopt_set_upper_bounds(opt,vertex2);
+    nlopt_set_lower_bounds(opt,lb);
+    nlopt_set_upper_bounds(opt,ub);
 
     nlopt_set_min_objective(opt, costFunction, query);
 
@@ -1818,7 +1818,7 @@ double quadratic_minimization(double* vertex1,  double* vertex2, std::vector<dou
     double minf;
 
     //Vertex 2 is the initial guess
-    nlopt_result res=nlopt_optimize(opt, vertex1,&minf);
+    nlopt_result res=nlopt_optimize(opt, lb,&minf);
 
 
     /*
@@ -1988,13 +1988,10 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
         contBox++;
         double temp = resultList.top().score;
         if(a_node.score > temp){
-            /*for(int i = 0; i < k; i++){
+            for(int i = 0; i < k; i++){
                 std::cout << i << " resultList score: " << resultList.top().score << std::endl;
                 resultList.pop();
-            }*/
-            /*std::cout << "contBox: " << contBox << std::endl;
-            std::cout << "contLeaf: " << contLeaf << std::endl;
-            std::cout << "contPoint: " << contPoint << std::endl;*/
+            }
             *box += contBox;
             *leaves += contLeaf;
             *point += contPoint;
@@ -2032,12 +2029,11 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
         }
     }
 
-/*
     for(int i = 0; i < k; i++){
         std::cout << i << " resultList score: " << resultList.top().score << std::endl;
         resultList.pop();
     }
-    */
+
     /*std::cout << "contBox: " << contBox << std::endl;
     std::cout << "contLeaf: " << contLeaf << std::endl;
     std::cout << "contPoint: " << contPoint << std::endl;*/

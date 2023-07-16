@@ -13,7 +13,7 @@ typedef int ValueType;
 typedef std::vector<double> MyTuple;
 
 
-#define DIM 4
+#define DIM 2
 #define BETA 0.66
 
 
@@ -202,10 +202,10 @@ int main() {
     MyTree tree;
 
     //std::string filePath = "../datasets/dataset_small.csv";
-    //std::string filePath = "../datasets/cor_neg_1k_2.csv";
+    std::string filePath = "../datasets/cor_neg_1k_2.csv";
     //std::string filePath = "../datasets/cor_neg_1M_2.csv";
     //std::string filePath = "../datasets/cor_neg_1M_4.csv";
-    std::string filePath = "../datasets/cor_neg_1k_4.csv";
+    //std::string filePath = "../datasets/cor_neg_1k_4.csv";
 
     //Tree creation
     std::vector<Rect> rectangles = createRectanglesFromCSV(filePath, DIM);
@@ -270,13 +270,26 @@ int main() {
 
             timeLinRT += durationLinRT.count();
 
-            //std::cout << "----------------DIRECTIONAL RTREE----------------" << std::endl;
+            std::cout << "----------------DIRECTIONAL RTREE----------------" << std::endl;
             auto startTimeDirRT = std::chrono::high_resolution_clock::now();
             tree.DirectionalTopKQueryRTree(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
             auto endTimeDirRT = std::chrono::high_resolution_clock::now();
             auto durationDirRT = std::chrono::duration_cast<std::chrono::microseconds>(endTimeDirRT - startTimeDirRT);
 
             timeDirRT += durationDirRT.count();
+
+            //std::cout << "----------------DIRECTIONAL SEQUENTIAL----------------" << std::endl;
+            auto startTimeDirSeq = std::chrono::high_resolution_clock::now();
+
+            std::vector<MyTuple> tuplesDir = readCSVDir(filePath, query);
+            std::sort(tuplesDir.begin(), tuplesDir.end(), compareLastColumn);
+
+            auto endTimeDirSeq = std::chrono::high_resolution_clock::now();
+            auto durationDirSeq = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeDirSeq - startTimeDirSeq);
+
+            for (i = k-1; i >= 0; i--){
+                std::cout << i << " tuples score: " << tuplesDir[i].back() << std::endl;
+            }
         }
     }
 

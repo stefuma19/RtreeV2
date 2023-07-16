@@ -1988,10 +1988,10 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
         contBox++;
         double temp = resultList.top().score;
         if(a_node.score > temp){
-            for(int i = 0; i < k; i++){
+            /*for(int i = 0; i < k; i++){
                 std::cout << i << " resultList score: " << resultList.top().score << std::endl;
                 resultList.pop();
-            }
+            }*/
             *box += contBox;
             *leaves += contLeaf;
             *point += contPoint;
@@ -2029,10 +2029,10 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
         }
     }
 
-    for(int i = 0; i < k; i++){
+    /*for(int i = 0; i < k; i++){
         std::cout << i << " resultList score: " << resultList.top().score << std::endl;
         resultList.pop();
-    }
+    }*/
 
     /*std::cout << "contBox: " << contBox << std::endl;
     std::cout << "contLeaf: " << contLeaf << std::endl;

@@ -301,58 +301,58 @@ int main() {
             }
         }
 
-        std::vector<double> query;
-        query.reserve(DIM);
-        for (int i = 0; i < DIM; i++) {
-            query.push_back(1 / DIM);
-        }
-
-        //std::cout << "----------------LINEAR SEQUENTIAL----------------" << std::endl;
-        auto startTimeLinSeq = std::chrono::high_resolution_clock::now();
-
-        std::vector<MyTuple> tuplesLin = readCSVLin(filePath, query);
-        std::sort(tuplesLin.begin(), tuplesLin.end(), compareLastColumn);
-
-        auto endTimeLinSeq = std::chrono::high_resolution_clock::now();
-        auto durationLinSeq = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeLinSeq - startTimeLinSeq);
-
-
-        /*for (int i = k-1; i >= 0; i--){
-            std::cout << i << " tuples score: " << tuplesLin[i].back() << std::endl;
-        }*/
-
-        timeLinSeq += durationLinSeq.count();
-
-        //std::cout << "----------------DIRECTIONAL SEQUENTIAL----------------" << std::endl;
-        auto startTimeDirSeq = std::chrono::high_resolution_clock::now();
-
-        std::vector<MyTuple> tuplesDir = readCSVDir(filePath, query);
-        std::sort(tuplesDir.begin(), tuplesDir.end(), compareLastColumn);
-
-        auto endTimeDirSeq = std::chrono::high_resolution_clock::now();
-        auto durationDirSeq = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeDirSeq - startTimeDirSeq);
-
-        /*for (i = k-1; i >= 0; i--){
-            std::cout << i << " tuples score: " << tuplesDir[i].back() << std::endl;
-        }*/
-
-        timeDirSeq += durationDirSeq.count();
-
-        std::cout << "\nExecution time LinRT: " << static_cast<double> (timeLinRT) / numQ << " microseconds."
-                  << std::endl;
+        std::cout << "\nExecution time LinRT: " << static_cast<double> (timeLinRT) / numQ << " microseconds." << std::endl;
         std::cout << "Execution time DirRT: " << static_cast<double>(timeDirRT) / numQ << " microseconds." << std::endl;
-        std::cout << "Execution time LinSeq: " << timeLinSeq << " milliseconds." << std::endl;
-        std::cout << "Execution time DirSeq: " << timeDirSeq << " milliseconds." << std::endl;
-
 
         std::cout << "\nAccesses to Box Linear: " << static_cast<double>(numBoxLin) / numQ << std::endl;
         std::cout << "Accesses to Leaves Linear: " << static_cast<double>(numLeavesLin) / numQ << std::endl;
         std::cout << "Accesses to Points Linear: " << static_cast<double>(numPointLin) / numQ << std::endl;
 
-
         std::cout << "\nAccesses to Box Directional: " << static_cast<double>(numBoxDir) / numQ << std::endl;
         std::cout << "Accesses to Leaves Directional: " << static_cast<double>(numLeavesDir) / numQ << std::endl;
         std::cout << "Accesses to Points Directional: " << static_cast<double>(numPointDir) / numQ << std::endl;
     }
+
+    std::vector<double> query;
+    query.reserve(DIM);
+    for (int i = 0; i < DIM; i++) {
+        query.push_back(1 / DIM);
+    }
+
+    //std::cout << "----------------LINEAR SEQUENTIAL----------------" << std::endl;
+    auto startTimeLinSeq = std::chrono::high_resolution_clock::now();
+
+    std::vector<MyTuple> tuplesLin = readCSVLin(filePath, query);
+    std::sort(tuplesLin.begin(), tuplesLin.end(), compareLastColumn);
+
+    auto endTimeLinSeq = std::chrono::high_resolution_clock::now();
+    auto durationLinSeq = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeLinSeq - startTimeLinSeq);
+
+
+    /*for (int i = k-1; i >= 0; i--){
+        std::cout << i << " tuples score: " << tuplesLin[i].back() << std::endl;
+    }*/
+
+    timeLinSeq += durationLinSeq.count();
+
+    //std::cout << "----------------DIRECTIONAL SEQUENTIAL----------------" << std::endl;
+    auto startTimeDirSeq = std::chrono::high_resolution_clock::now();
+
+    std::vector<MyTuple> tuplesDir = readCSVDir(filePath, query);
+    std::sort(tuplesDir.begin(), tuplesDir.end(), compareLastColumn);
+
+    auto endTimeDirSeq = std::chrono::high_resolution_clock::now();
+    auto durationDirSeq = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeDirSeq - startTimeDirSeq);
+
+    /*for (i = k-1; i >= 0; i--){
+        std::cout << i << " tuples score: " << tuplesDir[i].back() << std::endl;
+    }*/
+
+    timeDirSeq += durationDirSeq.count();
+
+    std::cout << "\nResults for Sequential Execution" << std::endl;
+    std::cout << "\nExecution time LinSeq: " << timeLinSeq << " milliseconds." << std::endl;
+    std::cout << "Execution time DirSeq: " << timeDirSeq << " milliseconds." << std::endl;
+
     return 0;
 }

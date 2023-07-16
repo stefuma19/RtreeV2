@@ -4,6 +4,7 @@
 #include <fstream>
 #include <sstream>
 #include <chrono>
+#include <thread>
 #include <nlopt.hpp>
 
 using namespace std;
@@ -12,7 +13,7 @@ typedef int ValueType;
 typedef std::vector<double> MyTuple;
 
 
-#define DIM 2
+#define DIM 4
 #define BETA 0.66
 
 
@@ -201,9 +202,10 @@ int main() {
     MyTree tree;
 
     //std::string filePath = "../datasets/dataset_small.csv";
-    std::string filePath = "../datasets/cor_neg_1k_2.csv";
+    //std::string filePath = "../datasets/cor_neg_1k_2.csv";
     //std::string filePath = "../datasets/cor_neg_1M_2.csv";
     //std::string filePath = "../datasets/cor_neg_1M_4.csv";
+    std::string filePath = "../datasets/cor_neg_1k_4.csv";
 
     //Tree creation
     std::vector<Rect> rectangles = createRectanglesFromCSV(filePath, DIM);
@@ -229,19 +231,7 @@ int main() {
     std::cout << "contLeaf: " << numLeaves << std::endl;
     std::cout << "contPoint: " << numPoints << std::endl;
 
-
-    std::vector<double> query {0.5, 0.5};
     int k = 10;
-
-    std::vector<double> values;
-    int numSteps = 50;  // Number of steps
-    double stepSize = 1.0 / numSteps;  // Step size
-
-    for (int i = 0; i <= numSteps; i++) {
-        double value = i * stepSize;
-        values.push_back(value);
-    }
-
 
     double timeLinRT = 0;
     double timeDirRT = 0;
@@ -256,35 +246,46 @@ int main() {
     int numLeavesDir = 0;
     int numPointDir = 0;
 
+    std::ifstream file("../queries/" + std::to_string(DIM) + "d.txt");
+    int numQ = 0;
 
-    //Execution of 50 queries
-    for(int j = 0; j<=numSteps; j++){
+    if (file.is_open()) {
+        std::string line;
+        while (std::getline(file, line)) { // Read each line of the file
+            numQ++;
+            std::vector<double> query;
+            std::stringstream ss(line);
+            std::string value;
 
-        query[0] = values[j];
-        query[1] = values[numSteps - j];
-        //std::cout << "Query:" << query[0] << " , " << query[1] << std::endl;
+            while (std::getline(ss, value, ',')) { // Split line by comma
+                double number = std::stod(value);
+                query.push_back(number);
+            }
 
-        //Linear Rtree
+            //std::cout << "----------------LINEAR RTREE----------------" << std::endl;
+            auto startTimeLinRT = std::chrono::high_resolution_clock::now();
+            tree.linearTopKQueryRTree(k, query, &numBoxLin, &numLeavesLin, &numPointLin);
+            auto endTimeLinRT = std::chrono::high_resolution_clock::now();
+            auto durationLinRT = std::chrono::duration_cast<std::chrono::microseconds>(endTimeLinRT - startTimeLinRT);
 
-        std::cout << "----------------LINEAR RTREE----------------" << std::endl;
-        auto startTimeLinRT = std::chrono::high_resolution_clock::now();
-        tree.linearTopKQueryRTree(k, query, &numBoxLin, &numLeavesLin, &numPointLin);
-        auto endTimeLinRT = std::chrono::high_resolution_clock::now();
-        auto durationLinRT = std::chrono::duration_cast<std::chrono::microseconds>(endTimeLinRT - startTimeLinRT);
+            timeLinRT += durationLinRT.count();
 
-        timeLinRT += durationLinRT.count();
-        //Directional Rtree
+            //std::cout << "----------------DIRECTIONAL RTREE----------------" << std::endl;
+            auto startTimeDirRT = std::chrono::high_resolution_clock::now();
+            tree.DirectionalTopKQueryRTree(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
+            auto endTimeDirRT = std::chrono::high_resolution_clock::now();
+            auto durationDirRT = std::chrono::duration_cast<std::chrono::microseconds>(endTimeDirRT - startTimeDirRT);
 
-        std::cout << "----------------DIRECTIONAL RTREE----------------" << std::endl;
-        auto startTimeDirRT = std::chrono::high_resolution_clock::now();
-        tree.DirectionalTopKQueryRTree(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
-        auto endTimeDirRT = std::chrono::high_resolution_clock::now();
-        auto durationDirRT = std::chrono::duration_cast<std::chrono::microseconds>(endTimeDirRT - startTimeDirRT);
-
-        timeDirRT += durationDirRT.count();
-
+            timeDirRT += durationDirRT.count();
+        }
     }
-    //Linear Sequential
+
+    std::vector<double> query;
+    query.reserve(DIM);
+    for(int i = 0; i< DIM; i++){
+        query.push_back(1/DIM);
+    }
+
     std::cout << "----------------LINEAR SEQUENTIAL----------------" << std::endl;
     auto startTimeLinSeq = std::chrono::high_resolution_clock::now();
 
@@ -301,7 +302,6 @@ int main() {
 
     timeLinSeq += durationLinSeq.count();
 
-    //Directional Sequential
     std::cout << "----------------DIRECTIONAL SEQUENTIAL----------------" << std::endl;
     auto startTimeDirSeq = std::chrono::high_resolution_clock::now();
 
@@ -311,24 +311,23 @@ int main() {
     auto endTimeDirSeq = std::chrono::high_resolution_clock::now();
     auto durationDirSeq = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeDirSeq - startTimeDirSeq);
 
-
     /*for (i = k-1; i >= 0; i--){
         std::cout << i << " tuples score: " << tuplesDir[i].back() << std::endl;
     }*/
 
     timeDirSeq += durationDirSeq.count();
-    std::cout << "Execution time LinRT: " << timeLinRT/(numSteps + 1) << " microseconds." << std::endl;
-    std::cout << "Execution time DirRT: " << timeDirRT/(numSteps + 1) << " microseconds." << std::endl;
+    std::cout << "Execution time LinRT: " << static_cast<double> (timeLinRT)/numQ << " microseconds." << std::endl;
+    std::cout << "Execution time DirRT: " << static_cast<double>(timeDirRT)/numQ << " microseconds." << std::endl;
     std::cout << "Execution time LinSeq: " << timeLinSeq << " milliseconds." << std::endl;
     std::cout << "Execution time DirSeq: " << timeDirSeq << " milliseconds." << std::endl;
 
-    std::cout << "Accesses to Box Linear: " << numBoxLin/(numSteps + 1) << std::endl;
-    std::cout << "Accesses to Leaves Linear: " << numLeavesLin/(numSteps + 1) << std::endl;
-    std::cout << "Accesses to Points Linear: " << numPointLin/(numSteps + 1) << std::endl;
+    std::cout << "Accesses to Box Linear: " << static_cast<double>(numBoxLin)/numQ << std::endl;
+    std::cout << "Accesses to Leaves Linear: " << static_cast<double>(numLeavesLin)/numQ << std::endl;
+    std::cout << "Accesses to Points Linear: " << static_cast<double>(numPointLin)/numQ << std::endl;
 
-    std::cout << "Accesses to Box Directional: " << numBoxDir/(numSteps + 1) << std::endl;
-    std::cout << "Accesses to Leaves Directional: " << numLeavesDir/(numSteps + 1) << std::endl;
-    std::cout << "Accesses to Points Directional: " << numPointDir/(numSteps + 1) << std::endl;
+    std::cout << "Accesses to Box Directional: " << static_cast<double>(numBoxDir)/numQ << std::endl;
+    std::cout << "Accesses to Leaves Directional: " << static_cast<double>(numLeavesDir)/numQ << std::endl;
+    std::cout << "Accesses to Points Directional: " << static_cast<double>(numPointDir)/numQ << std::endl;
 
     return 0;
 }

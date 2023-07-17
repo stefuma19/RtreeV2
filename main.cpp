@@ -390,6 +390,10 @@ int main() {
     timeDirSeq += durationDirSeq.count();
 
     std::cout << "\n - Results for Sequential Execution" << std::endl;
+
+    long wholePart;
+    double decimalPart;
+
     std::cout << "\nExecution time LinSeq: " << timeLinSeq << " milliseconds." << std::endl;
     std::cout << "Execution time DirSeq: " << timeDirSeq << " milliseconds." << std::endl;
 
@@ -398,38 +402,63 @@ int main() {
 
     std::cout << "\nLinear Rtree time:" << std::endl;
     for (const auto& element : timeLinRTvect) {
-        std::cout << element << std::endl;
+        wholePart = static_cast<long>(element);
+        decimalPart = element - wholePart;
+
+        std::cout << wholePart << "," << decimalPart * 10 << std::endl;
     }
 
     std::cout << "\nLinear Rtree numPoint:" << std::endl;
     for (const auto& element : numPointLinvect) {
-        std::cout << element << std::endl;
+
+        wholePart = static_cast<long>(element);
+        decimalPart = element - wholePart;
+
+        std::cout << wholePart << "," << decimalPart * 10 << std::endl;
     }
     std::cout << "\nLinear Rtree numLeaves:" << std::endl;
     for (const auto& element : numLeavesLinvect) {
-        std::cout << element << std::endl;
+        wholePart = static_cast<long>(element);
+        decimalPart = element - wholePart;
+
+        std::cout << wholePart << "," << decimalPart * 10 << std::endl;
     }
     std::cout << "\nLinear Rtree numBoxes:" << std::endl;
     for (const auto& element : numBoxLinvect) {
-        std::cout << element << std::endl;
+        wholePart = static_cast<long>(element);
+        decimalPart = element - wholePart;
+
+        std::cout << wholePart << "," << decimalPart * 10 << std::endl;
     }
 
     std::cout << "\nDirectional Rtree time:" << std::endl;
     for (const auto& element : timeDirRTvect) {
-        std::cout << element << std::endl;
+        wholePart = static_cast<long>(element);
+        decimalPart = element - wholePart;
+
+        std::cout << wholePart << "," << decimalPart * 10 << std::endl;
     }
 
     std::cout << "\nDirectional Rtree numPoint:" << std::endl;
     for (const auto& element : numPointDirvect) {
-        std::cout << element << std::endl;
+        wholePart = static_cast<long>(element);
+        decimalPart = element - wholePart;
+
+        std::cout << wholePart << "," << decimalPart * 10 << std::endl;
     }
     std::cout << "\nDirectional Rtree numLeaves:" << std::endl;
     for (const auto& element : numLeavesDirvect) {
-        std::cout << element << std::endl;
+        wholePart = static_cast<long>(element);
+        decimalPart = element - wholePart;
+
+        std::cout << wholePart << "," << decimalPart * 10 << std::endl;
     }
     std::cout << "\nDirectional Rtree numBoxes:" << std::endl;
     for (const auto& element : numBoxDirvect) {
-        std::cout << element << std::endl;
+        wholePart = static_cast<long>(element);
+        decimalPart = element - wholePart;
+
+        std::cout << wholePart << "," << decimalPart * 10 << std::endl;
     }
 
     return 0;

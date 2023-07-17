@@ -5,14 +5,22 @@
 #include <sstream>
 #include <chrono>
 #include <nlopt.hpp>
+#include <locale>
 
 using namespace std;
 
 typedef int ValueType;
 typedef std::vector<double> MyTuple;
 
+//Helper class to replace decimal separator
+template <class charT, charT sep>
+class punct_facet: public std::numpunct<charT> {
+protected:
+    virtual charT do_decimal_point() const override { return sep; }
+};
 
-#define DIM 2
+
+#define DIM 4
 #define BETA 0.66
 
 
@@ -201,7 +209,7 @@ int main() {
     MyTree tree;
 
     //std::string filePath = "../datasets/dataset_small.csv";
-    std::string filePath = "../datasets/cor_neg_1k_2.csv";
+    std::string filePath = "../datasets/cor_neg/4D/cor_neg_10k_4.csv";
     //std::string filePath = "../datasets/cor_neg_1M_2.csv";
     //std::string filePath = "../datasets/cor_neg_1M_4.csv";
     //std::string filePath = "../datasets/cor_neg_1k_4.csv";
@@ -391,9 +399,6 @@ int main() {
 
     std::cout << "\n - Results for Sequential Execution" << std::endl;
 
-    long wholePart;
-    double decimalPart;
-
     std::cout << "\nExecution time LinSeq: " << timeLinSeq << " milliseconds." << std::endl;
     std::cout << "Execution time DirSeq: " << timeDirSeq << " milliseconds." << std::endl;
 
@@ -402,63 +407,46 @@ int main() {
 
     std::cout << "\nLinear Rtree time:" << std::endl;
     for (const auto& element : timeLinRTvect) {
-        wholePart = static_cast<long>(element);
-        decimalPart = element - wholePart;
-
-        std::cout << wholePart << "," << decimalPart * 10 << std::endl;
+        std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
+        std::cout << element << std::endl;
     }
 
     std::cout << "\nLinear Rtree numPoint:" << std::endl;
     for (const auto& element : numPointLinvect) {
-
-        wholePart = static_cast<long>(element);
-        decimalPart = element - wholePart;
-
-        std::cout << wholePart << "," << decimalPart * 10 << std::endl;
+        std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
+        std::cout << element << std::endl;
     }
     std::cout << "\nLinear Rtree numLeaves:" << std::endl;
     for (const auto& element : numLeavesLinvect) {
-        wholePart = static_cast<long>(element);
-        decimalPart = element - wholePart;
-
-        std::cout << wholePart << "," << decimalPart * 10 << std::endl;
+        std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
+        std::cout << element << std::endl;
     }
     std::cout << "\nLinear Rtree numBoxes:" << std::endl;
     for (const auto& element : numBoxLinvect) {
-        wholePart = static_cast<long>(element);
-        decimalPart = element - wholePart;
-
-        std::cout << wholePart << "," << decimalPart * 10 << std::endl;
+        std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
+        std::cout << element << std::endl;
     }
 
     std::cout << "\nDirectional Rtree time:" << std::endl;
     for (const auto& element : timeDirRTvect) {
-        wholePart = static_cast<long>(element);
-        decimalPart = element - wholePart;
-
-        std::cout << wholePart << "," << decimalPart * 10 << std::endl;
+        std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
+        std::cout << element << std::endl;
     }
 
     std::cout << "\nDirectional Rtree numPoint:" << std::endl;
     for (const auto& element : numPointDirvect) {
-        wholePart = static_cast<long>(element);
-        decimalPart = element - wholePart;
-
-        std::cout << wholePart << "," << decimalPart * 10 << std::endl;
+        std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
+        std::cout << element << std::endl;
     }
     std::cout << "\nDirectional Rtree numLeaves:" << std::endl;
     for (const auto& element : numLeavesDirvect) {
-        wholePart = static_cast<long>(element);
-        decimalPart = element - wholePart;
-
-        std::cout << wholePart << "," << decimalPart * 10 << std::endl;
+        std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
+        std::cout << element << std::endl;
     }
     std::cout << "\nDirectional Rtree numBoxes:" << std::endl;
     for (const auto& element : numBoxDirvect) {
-        wholePart = static_cast<long>(element);
-        decimalPart = element - wholePart;
-
-        std::cout << wholePart << "," << decimalPart * 10 << std::endl;
+        std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
+        std::cout << element << std::endl;
     }
 
     return 0;

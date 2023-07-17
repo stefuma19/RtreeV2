@@ -197,7 +197,7 @@ std::vector<MyTuple> readCSVDir(const std::string& filename, std::vector<double>
 
 int main() {
     //
-    typedef RTree<ValueType, double, DIM, float, 100> MyTree;
+    typedef RTree<ValueType, double, DIM, float, 5> MyTree;
     MyTree tree;
 
     //std::string filePath = "../datasets/dataset_small.csv";
@@ -246,11 +246,34 @@ int main() {
     int numLeavesDir = 0;
     int numPointDir = 0;
 
+    std::vector<double> timeLinRTvect;
+    timeLinRTvect.reserve(9);
+    std::vector<double> timeDirRTvect;
+    timeLinRTvect.reserve(9);
+
+    std::vector<double> numBoxLinvect;
+    timeLinRTvect.reserve(9);
+    std::vector<double> numLeavesLinvect;
+    timeLinRTvect.reserve(9);
+    std::vector<double> numPointLinvect;
+    timeLinRTvect.reserve(9);
+
+    std::vector<double> numBoxDirvect;
+    timeLinRTvect.reserve(9);
+    std::vector<double> numLeavesDirvect;
+    timeLinRTvect.reserve(9);
+    std::vector<double> numPointDirvect;
+    timeLinRTvect.reserve(9);
+
+
+
     std::ifstream inputFile("../utilities/k.txt");
+
+    std::cout << "\n - Results for dataset = " << filePath << std::endl;
 
     while (inputFile >> k) {
 
-        std::cout << "\n - Results for k = " << k << ", dataset = " << filePath << std::endl;
+        //std::cout << "\n - Results for k = " << k << ", dataset = " << filePath << std::endl;
 
         timeLinRT = 0;
         timeDirRT = 0;
@@ -301,6 +324,8 @@ int main() {
             }
         }
 
+            // Print to have a nice output
+        /*
         std::cout << "\nExecution time LinRT: " << static_cast<double> (timeLinRT) / numQ << " microseconds." << std::endl;
         std::cout << "Execution time DirRT: " << static_cast<double>(timeDirRT) / numQ << " microseconds." << std::endl;
 
@@ -311,6 +336,20 @@ int main() {
         std::cout << "\nAccesses to Box Directional: " << static_cast<double>(numBoxDir) / numQ << std::endl;
         std::cout << "Accesses to Leaves Directional: " << static_cast<double>(numLeavesDir) / numQ << std::endl;
         std::cout << "Accesses to Points Directional: " << static_cast<double>(numPointDir) / numQ << std::endl;
+         */
+
+            //Print to have an usefull output for the excel
+        timeLinRTvect.push_back(static_cast<double> (timeLinRT) / numQ);
+        timeDirRTvect.push_back(static_cast<double> (timeDirRT) / numQ);
+
+        numBoxLinvect.push_back(static_cast<double>(numBoxLin) / numQ);
+        numLeavesLinvect.push_back(static_cast<double>(numLeavesLin) / numQ);
+        numPointLinvect.push_back(static_cast<double>(numPointLin) / numQ);
+
+        numBoxDirvect.push_back(static_cast<double>(numBoxDir) / numQ);
+        numLeavesDirvect.push_back(static_cast<double>(numLeavesDir) / numQ);
+        numPointDirvect.push_back(static_cast<double>(numPointDir) / numQ);
+
     }
 
     std::vector<double> query;
@@ -350,9 +389,48 @@ int main() {
 
     timeDirSeq += durationDirSeq.count();
 
-    std::cout << "\nResults for Sequential Execution" << std::endl;
+    std::cout << "\n - Results for Sequential Execution" << std::endl;
     std::cout << "\nExecution time LinSeq: " << timeLinSeq << " milliseconds." << std::endl;
     std::cout << "Execution time DirSeq: " << timeDirSeq << " milliseconds." << std::endl;
+
+        //Print to have an usefull output for the excel
+    std::cout << "\n - Results for Rtree Execution" << std::endl;
+
+    std::cout << "\nLinear Rtree time:" << std::endl;
+    for (const auto& element : timeLinRTvect) {
+        std::cout << element << std::endl;
+    }
+
+    std::cout << "\nLinear Rtree numPoint:" << std::endl;
+    for (const auto& element : numPointLinvect) {
+        std::cout << element << std::endl;
+    }
+    std::cout << "\nLinear Rtree numLeaves:" << std::endl;
+    for (const auto& element : numLeavesLinvect) {
+        std::cout << element << std::endl;
+    }
+    std::cout << "\nLinear Rtree numBoxes:" << std::endl;
+    for (const auto& element : numBoxLinvect) {
+        std::cout << element << std::endl;
+    }
+
+    std::cout << "\nDirectional Rtree time:" << std::endl;
+    for (const auto& element : timeDirRTvect) {
+        std::cout << element << std::endl;
+    }
+
+    std::cout << "\nDirectional Rtree numPoint:" << std::endl;
+    for (const auto& element : numPointDirvect) {
+        std::cout << element << std::endl;
+    }
+    std::cout << "\nDirectional Rtree numLeaves:" << std::endl;
+    for (const auto& element : numLeavesDirvect) {
+        std::cout << element << std::endl;
+    }
+    std::cout << "\nDirectional Rtree numBoxes:" << std::endl;
+    for (const auto& element : numBoxDirvect) {
+        std::cout << element << std::endl;
+    }
 
     return 0;
 }

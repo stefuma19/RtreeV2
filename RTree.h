@@ -19,7 +19,7 @@
 #include <nlopt.h>
 
 #define BETA 0.66
-#define DIM 4
+#define DIM 2
 #define ASSERT assert // RTree uses ASSERT( condition )
 #ifndef Min
   #define Min std::min

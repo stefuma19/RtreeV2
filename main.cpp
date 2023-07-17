@@ -20,7 +20,7 @@ protected:
 };
 
 
-#define DIM 4
+#define DIM 2
 #define BETA 0.66
 
 
@@ -209,10 +209,11 @@ int main() {
     MyTree tree;
 
     //std::string filePath = "../datasets/dataset_small.csv";
-    std::string filePath = "../datasets/cor_neg/4D/cor_neg_10k_4.csv";
+    //std::string filePath = "../datasets/cor_neg/4D/cor_neg_10k_4.csv";
     //std::string filePath = "../datasets/cor_neg_1M_2.csv";
     //std::string filePath = "../datasets/cor_neg_1M_4.csv";
     //std::string filePath = "../datasets/cor_neg_1k_4.csv";
+    std::string filePath = "../datasets/cor_neg_1k_2.csv";
 
     //Tree creation
     std::vector<Rect> rectangles = createRectanglesFromCSV(filePath, DIM);

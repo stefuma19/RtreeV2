@@ -20,6 +20,8 @@
 
 #define BETA 0.66
 #define DIM 2
+#define MINIMIZATION 1 // 0 for exact minimization, 1 for optimized
+
 #define ASSERT assert // RTree uses ASSERT( condition )
 #ifndef Min
   #define Min std::min
@@ -1764,7 +1766,24 @@ double dist_line_point2(const double *point, const double* query) {
     return std::sqrt(dist);
 }
 
-double costFunction(unsigned n, const double *x, double *grad, void *data)
+double computeScoreDir(double* vertex1, std::vector<double> query) {
+    double score = 0;
+    for(int i = 0; i < query.size(); i++){
+        score += vertex1[i] * query[i];
+    }
+    score = BETA * score + (1 - BETA) * dist_line_point(vertex1, query);
+    return score;
+}
+
+double computeMinScoreLin(double* vertex1, std::vector<double> query) {
+    double score = 0;
+    for(int i = 0; i < query.size(); i++){
+        score += vertex1[i] * query[i];
+    }
+    return score;
+}
+
+double costFunction_exact(unsigned n, const double *x, double *grad, void *data)
 {
 
     auto* query = reinterpret_cast<double*>(data);
@@ -1777,7 +1796,70 @@ double costFunction(unsigned n, const double *x, double *grad, void *data)
     return BETA * score + (1-BETA) * dist_line_point2(x, query);
 }
 
-double quadratic_minimization(double* vertex1,  double* vertex2, std::vector<double> queryVec) {
+double quadratic_minimization_exact(double* vertex1, double* vertex2, std::vector<double> queryVec) {
+
+    double lb[DIM];
+    double ub[DIM];
+    for (int i = 0; i < DIM; i++) {
+        lb[i] = vertex1[i];
+        ub[i] = vertex2[i];
+    }
+
+    double query[DIM];
+    for(int i = 0; i < DIM; i++) {
+        query[i] = queryVec[i];
+    }
+    // Copy elements from vector to array
+    std::copy(queryVec.begin(), queryVec.end(), query);
+
+    // create the optimization problem
+    // opaque pointer type
+    nlopt_opt opt;
+    opt = nlopt_create(NLOPT_LN_NELDERMEAD, DIM);
+
+    nlopt_set_lower_bounds(opt,lb);
+    nlopt_set_upper_bounds(opt,ub);
+
+    nlopt_set_min_objective(opt, costFunction_exact, query);
+
+    nlopt_set_xtol_rel(opt, 1e-2);
+
+    double minf;
+
+    //Vertex 2 is the initial guess
+    nlopt_result res=nlopt_optimize(opt, lb,&minf);
+
+    return minf;
+}
+
+double costFunction_opt(unsigned n, const double *x, double *grad, void *data)
+{
+
+    auto* query = reinterpret_cast<double*>(data);
+
+    // return value is the value of the cost function
+
+    double dist = 0.0;
+    int len = DIM;
+
+    for (int i = 0; i < len; i++) {
+        double num = 0.0;
+        double den = 0.0;
+
+        for (int j = 0; j < len; j++) {
+            num += query[j] * x[j];
+            den += query[j] * query[j];
+        }
+
+        double d = x[i] - (query[i] * num / den);
+        d = d * d;
+        dist += d;
+    }
+
+    return dist;
+}
+
+double quadratic_minimization_opt(double* vertex1, double* vertex2, std::vector<double> queryVec) {
 
 
     double lb[DIM];
@@ -1803,52 +1885,25 @@ double quadratic_minimization(double* vertex1,  double* vertex2, std::vector<dou
     nlopt_set_lower_bounds(opt,lb);
     nlopt_set_upper_bounds(opt,ub);
 
-    nlopt_set_min_objective(opt, costFunction, query);
+    nlopt_set_min_objective(opt, costFunction_opt, query);
 
     nlopt_set_xtol_rel(opt, 1e-2);
 
 
-    // initial guess
-    /*
-    double x[DIM];
-    for (int i = 0; i < DIM; i++) {
-        x[i] = vertex2[i];
-    }
-    */
     double minf;
 
     //Vertex 2 is the initial guess
     nlopt_result res=nlopt_optimize(opt, lb,&minf);
 
-
-    /*
-    if (res < 0) {
-        printf("nlopt failed!\n");
+    double minScore = 0;
+    for(int i = 0; i < DIM; i++){
+        minScore += vertex1[i] * query[i];
     }
-    else {
-        printf("found minimum at f(%g,%g) = %0.10g\n", x[0], x[1], minf);
-    }
-     */
 
-    return minf;
+    return BETA * minScore + (1 - BETA) * std::sqrt(minf);
 }
 
-double computeScoreDir(double* vertex1, std::vector<double> query) {
-    double score = 0;
-    for(int i = 0; i < query.size(); i++){
-        score += vertex1[i] * query[i];
-    }
-    score = BETA * score + (1 - BETA) * dist_line_point(vertex1, query);
-    return score;
-}
 
-double computeMinScoreLin(double* vertex1, std::vector<double> query) {
-    double score = 0;
-    for(int i = 0; i < query.size(); i++){
-        score += vertex1[i] * query[i];
-    }
-    return score;
-}
 
 RTREE_TEMPLATE
 std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::linearTopKQueryRTree(int k, std::vector<double> query, int* box, int* leaves, int* point)
@@ -1969,7 +2024,20 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
     for(int i = 0; i < m_root->m_count; i++)
     {
         nodeWithScore.node = m_root->m_branch[i].m_child;
-        nodeWithScore.score = quadratic_minimization(m_root->m_branch[i].m_rect.m_min, m_root->m_branch[i].m_rect.m_max, query);
+        switch(MINIMIZATION) {
+            case(0):
+                nodeWithScore.score = quadratic_minimization_exact(m_root->m_branch[i].m_rect.m_min,
+                                                                   m_root->m_branch[i].m_rect.m_max, query);
+                break;
+            case(1):
+                nodeWithScore.score = quadratic_minimization_opt(m_root->m_branch[i].m_rect.m_min,
+                                                                 m_root->m_branch[i].m_rect.m_max, query);
+                break;
+            default:
+                nodeWithScore.score = quadratic_minimization_exact(m_root->m_branch[i].m_rect.m_min,
+                                                                   m_root->m_branch[i].m_rect.m_max, query);
+                break;
+        }
         toVisit.push(nodeWithScore);
     }
 
@@ -2019,7 +2087,20 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
             // This is an internal node in the tree
             for(int index=0; index < a_node.node->m_count; index++)
             {
-                current_score = quadratic_minimization(a_node.node->m_branch[index].m_rect.m_min, a_node.node->m_branch[index].m_rect.m_max, query);
+                switch(MINIMIZATION) {
+                    case(0):
+                        current_score = quadratic_minimization_exact(a_node.node->m_branch[index].m_rect.m_min,
+                                                                     a_node.node->m_branch[index].m_rect.m_max, query);
+                        break;
+                    case(1):
+                        current_score = quadratic_minimization_opt(a_node.node->m_branch[index].m_rect.m_min,
+                                                                   a_node.node->m_branch[index].m_rect.m_max, query);
+                        break;
+                    default:
+                        current_score = quadratic_minimization_exact(a_node.node->m_branch[index].m_rect.m_min,
+                                                                     a_node.node->m_branch[index].m_rect.m_max, query);
+                        break;
+                }
                 if(current_score < resultList.top().score)  {
                     nodeWithScore.node = a_node.node->m_branch[index].m_child;
                     nodeWithScore.score = current_score;

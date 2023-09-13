@@ -20,8 +20,23 @@ protected:
 };
 
 
-#define DIM 2
+#define DIM 3
 #define BETA 0.66
+#if DIM == 2
+#define LEAF_CAPACITY 100
+#endif
+#if DIM == 3
+#define LEAF_CAPACITY 70
+#endif
+#if DIM == 4
+#define LEAF_CAPACITY 55
+#endif
+#if DIM == 5
+#define LEAF_CAPACITY 45
+#endif
+#if DIM == 6
+#define LEAF_CAPACITY 39
+#endif
 
 
 struct Rect
@@ -203,17 +218,159 @@ std::vector<MyTuple> readCSVDir(const std::string& filename, std::vector<double>
 }
 
 
+
+// Define the Object class
+struct NodeWithScore {
+
+    NodeWithScore(double s) {
+        score = s;
+    }
+
+    double score;
+
+    bool operator<(const NodeWithScore& a) const{
+        return score < a.score;
+    }
+};
+
+void sequentialLinear(const std::string& filename, std::vector<double> query, int k) {
+
+    std::priority_queue<NodeWithScore> heap;
+
+    std::vector<MyTuple> data;  // Vector to store the vectors of values
+    double score;
+    int i;
+    int j = 0;
+    //Current line
+    auto startTimeLinSeq = std::chrono::high_resolution_clock::now();
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Error opening file: " << filename << std::endl;
+    }
+    std::string line;
+    std::getline(file, line);  // Skip the first line (header)
+    while (std::getline(file, line)) {
+        std::istringstream iss(line);
+        std::string token;
+        score = 0;
+        // Skip the first value in each line
+        std::getline(iss, token, ',');
+
+        i= 0;
+        // Read the remaining values
+        while (std::getline(iss, token, ',')) {
+            score += std::stod(token) * query[i];
+            i++;
+        }
+
+        if (j < k){
+            heap.push(NodeWithScore(score));
+        } else if (score < heap.top().score){
+            heap.pop();
+            heap.push(NodeWithScore(score));
+        }
+        j++;
+    }
+    file.close();
+    auto endTimeLinSeq = std::chrono::high_resolution_clock::now();
+    auto durationLinSeq = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeLinSeq - startTimeLinSeq);
+    std::cout << "Linear Sequential: " << durationLinSeq.count() << " ms" << std::endl;
+
+    for(j=0; j<k; j++){
+        std::cout << heap.top().score << std::endl;
+        heap.pop();
+    }
+}
+
+void sequentialDirectional(const std::string& filename, std::vector<double> query, int k) {
+    std::priority_queue<NodeWithScore> heap;
+
+    std::vector<MyTuple> data;  // Vector to store the vectors of values
+    double score;
+    int i;
+    int j = 0;
+
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Error opening file: " << filename << std::endl;
+    }
+    auto startTimeDirSeq = std::chrono::high_resolution_clock::now();
+    std::string line;
+    std::getline(file, line);  // Skip the first line (header)
+
+    double point[DIM];
+
+    for(j=0; j<k; j++){
+        std::getline(file, line);
+        std::istringstream iss(line);
+        std::string token;
+        score = 0;
+        // Skip the first value in each line
+        std::getline(iss, token, ',');
+        i= 0;
+        // Read the remaining values
+        while (std::getline(iss, token, ',')) {
+            point[i]=(std::stod(token));
+            score += std::stod(token) * query[i];
+            i++;
+        }
+
+        score = BETA * score + (1 - BETA) * dist_line_point(point, query);
+        heap.push(NodeWithScore(score));
+    }
+
+    while (std::getline(file, line)) {
+        std::istringstream iss(line);
+        std::string token;
+        score = 0;
+        // Skip the first value in each line
+        std::getline(iss, token, ',');
+        i= 0;
+        // Read the remaining values
+        while (std::getline(iss, token, ',')) {
+            point[i]=(std::stod(token));
+            score += std::stod(token) * query[i];
+            i++;
+        }
+
+        score = BETA * score + (1 - BETA) * dist_line_point(point, query);
+
+        if (score < heap.top().score){
+            heap.pop();
+            heap.emplace(score);
+        }
+    }
+
+    file.close();
+    auto endTimeDirSeq = std::chrono::high_resolution_clock::now();
+    auto durationDirSeq = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeDirSeq - startTimeDirSeq);
+    std::cout << "Directional Sequential: " << durationDirSeq.count() << " ms" << std::endl;
+
+    for(j=0; j<k; j++){
+        std::cout << heap.top().score << std::endl;
+        heap.pop();
+    }
+}
+
 int main() {
     //
-    typedef RTree<ValueType, double, DIM, float, 5> MyTree;
+    typedef RTree<ValueType, double, DIM, float, LEAF_CAPACITY> MyTree;
     MyTree tree;
 
     //std::string filePath = "../datasets/dataset_small.csv";
-    //std::string filePath = "../datasets/cor_neg/4D/cor_neg_10k_4.csv";
+    //std::string filePath = "../datasets/uniform/5D/uniform_5M_5.csv";
     //std::string filePath = "../datasets/cor_neg_1M_2.csv";
-    //std::string filePath = "../datasets/cor_neg_1M_4.csv";
+    //std::string filePath = "../datasets/cor_neg/2D/cor_neg_1M_2.csv";
+    std::string filePath = "../datasets/cor_neg/3D/cor_neg_1M_3.csv";
     //std::string filePath = "../datasets/cor_neg_1k_4.csv";
-    std::string filePath = "../datasets/cor_neg_1k_2.csv";
+    //std::string filePath = "../datasets/cor_neg_1k_2.csv";
+    //std::string filePath = "../datasets/nba/nba.csv";
+    //std::string filePath = "../datasets/household/household_cleaned.csv";
+
+    std::vector<double> queryIniziale = {0.33, 0.33, 0.34};
+
+    sequentialLinear(filePath, queryIniziale, 10);
+    sequentialDirectional(filePath, queryIniziale, 10);
 
     //Tree creation
     std::vector<Rect> rectangles = createRectanglesFromCSV(filePath, DIM);

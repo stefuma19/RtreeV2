@@ -2332,7 +2332,7 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
                                                                                                      std::vector<double> query,
                                                                                                      int *box,
                                                                                                      int *leaves,
-                                                                                                     int *point) 
+                                                                                                     int *point)
 {
             ASSERT(m_root);
             ASSERT(m_root->m_level >= 0);
@@ -2356,24 +2356,18 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
     for(int i = 0; i < m_root->m_count; i++)
     {
         nodeWithScore.node = m_root->m_branch[i].m_child;
-        totalNonLinearProblemsSolved++;
-        switch(MINIMIZATION) {
-            case(0):
-                nodeWithScore.score = quadratic_minimization_exact(m_root->m_branch[i].m_rect.m_min,
-                                                                   m_root->m_branch[i].m_rect.m_max, query, prefLine.data(), den);
-                break;
-            case(1):
-                nodeWithScore.score = quadratic_minimization_opt(m_root->m_branch[i].m_rect.m_min,
-                                                                 m_root->m_branch[i].m_rect.m_max, query);
-                break;
-            default:
-                nodeWithScore.score = quadratic_minimization_exact(m_root->m_branch[i].m_rect.m_min,
-                                                                   m_root->m_branch[i].m_rect.m_max, query, prefLine.data(), den);
-                break;
+
+        if(intersects(m_root->m_branch[i].m_rect.m_min,
+                      m_root->m_branch[i].m_rect.m_max, prefLine)){
+            nodeWithScore.score = computeMinScoreLin(m_root->m_branch[i].m_rect.m_min, query)*BETA;
+        }
+        else{
+            totalNonLinearProblemsSolved++;
+            nodeWithScore.score = quadratic_minimization_exact(m_root->m_branch[i].m_rect.m_min,
+                                                               m_root->m_branch[i].m_rect.m_max, query, prefLine.data(), den);
         }
         toVisit.push(nodeWithScore);
     }
-
 
     for(int i = 0; i < k; i++){
         branchWithScore.branch = nullptr;
@@ -2420,21 +2414,16 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
             // This is an internal node in the tree
             for(int index=0; index < a_node.node->m_count; index++)
             {
-                totalNonLinearProblemsSolved++;
-                switch(MINIMIZATION) {
-                    case(0):
-                        current_score = quadratic_minimization_exact(a_node.node->m_branch[index].m_rect.m_min,
-                                                                     a_node.node->m_branch[index].m_rect.m_max, query, prefLine.data(), den);
-                        break;
-                    case(1):
-                        current_score = quadratic_minimization_opt(a_node.node->m_branch[index].m_rect.m_min,
-                                                                   a_node.node->m_branch[index].m_rect.m_max, query);
-                        break;
-                    default:
-                        current_score = quadratic_minimization_exact(a_node.node->m_branch[index].m_rect.m_min,
-                                                                     a_node.node->m_branch[index].m_rect.m_max, query, prefLine.data(), den);
-                        break;
+                if(intersects(m_root->m_branch[index].m_rect.m_min,
+                              m_root->m_branch[index].m_rect.m_max, prefLine)){
+                    current_score = computeMinScoreLin(m_root->m_branch[index].m_rect.m_min, query)*BETA;
                 }
+                else{
+                    totalNonLinearProblemsSolved++;
+                    current_score = quadratic_minimization_exact(m_root->m_branch[index].m_rect.m_min,
+                                                                       m_root->m_branch[index].m_rect.m_max, query, prefLine.data(), den);
+                }
+
                 if(current_score < resultList.top().score)  {
                     nodeWithScore.node = a_node.node->m_branch[index].m_child;
                     nodeWithScore.score = current_score;
@@ -2444,14 +2433,6 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
         }
     }
 
-    /*for(int i = 0; i < k; i++){
-        std::cout << i << " resultList score: " << resultList.top().score << std::endl;
-        resultList.pop();
-    }*/
-
-    /*std::cout << "contBox: " << contBox << std::endl;
-    std::cout << "contLeaf: " << contLeaf << std::endl;
-    std::cout << "contPoint: " << contPoint << std::endl;*/
     *box += contBox;
     *leaves += contLeaf;
     *point += contPoint;

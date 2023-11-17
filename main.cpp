@@ -21,6 +21,7 @@ protected:
 
 
 #define DIM 2
+#define ONLY_RTREE
 #define BETA 0.66
 #if DIM == 2
 #define LEAF_CAPACITY 100
@@ -466,10 +467,12 @@ int main() {
 
     //std::string filePath = "../datasets/cor_neg/2D/cor_neg_1M_2.csv";
     //std::string filePath = "../datasets/cor_neg/2D/cor_neg_1M_2.csv";
-    std::string filePath = "../datasets/cor_neg/2D/cor_neg_100K_2.csv";
+    std::string filePath = "../datasets/cor_neg/2D/cor_neg_1M_2.csv";
     //std::string filePath = "../datasets/household/household_cleaned.csv";
 
-    std::vector<double> queryIniziale = {0.33, 0.33, 0.34};
+
+    #ifndef ONLY_RTREE
+    std::vector<double> queryIniziale = {0.33, 0.33, 0.34, 0};
     std::vector<int> k_values = {1, 5, 10, 50, 100, 500};
 
     std::vector<MyTuple> data;  // Vector to store the vectors of values
@@ -488,6 +491,8 @@ int main() {
     sequentialLinear(filePath, queryIniziale, 10);
     sequentialDirectional(filePath, queryIniziale, 10);
     */
+    #endif
+
     //Tree creation
     std::vector<Rect> rectangles = createRectanglesFromCSV(filePath, DIM);
 
@@ -571,6 +576,8 @@ int main() {
         numPointDir = 0;
 
         std::ifstream file("../queries/" + std::to_string(DIM) + "d.txt");
+        //std::ifstream file("../balanced_queries/" + std::to_string(DIM) + "d.txt");
+        //std::ifstream file("../unbalanced_queries/" + std::to_string(DIM) + "d.txt");
         numQ = 0;
 
         if (file.is_open()) {
@@ -599,6 +606,7 @@ int main() {
                 auto startTimeDirRT = std::chrono::high_resolution_clock::now();
                 tree.DirectionalTopKQueryRTree(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
                 //tree.DirectionalTopKQueryRTreeRough(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
+                //tree.DirectionalTopKQueryRTreeMixed(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
                 auto endTimeDirRT = std::chrono::high_resolution_clock::now();
                 auto durationDirRT = std::chrono::duration_cast<std::chrono::microseconds>(
                         endTimeDirRT - startTimeDirRT);
@@ -639,12 +647,6 @@ int main() {
         totalNonLinearProblemsSolved = 0;
         totalTimeNonLinearProblemsExecution = 0;
 
-    }
-
-    std::vector<double> query;
-    query.reserve(DIM);
-    for (i = 0; i < DIM; i++) {
-        query.push_back(1 / DIM);
     }
 
     /*

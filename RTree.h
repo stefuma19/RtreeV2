@@ -30,6 +30,9 @@
   #define Max std::max
 #endif //Max
 
+int totalNonLinearProblemsSolved = 0;
+auto totalTimeNonLinearProblemsExecution = 0;
+
 //
 // RTree.h
 //
@@ -1714,6 +1717,23 @@ std::vector<typename RTREE_QUAL::Rect> RTREE_QUAL::ListTree() const
   }
 
   return treeList;
+}
+
+bool intersects(double* vertex_low, double* vertex_high, std::vector<double> prefLine){
+    double max, min;
+
+    max = vertex_low[0]/prefLine[0];
+    min = vertex_high[0]/prefLine[0];
+
+    for(int i = 1; i < DIM; i++){
+        if(vertex_low[i]/prefLine[i] > max){
+            max = vertex_low[i]/prefLine[i];
+        }
+        if(vertex_high[i]/prefLine[i] < min){
+            min = vertex_high[i]/prefLine[i];
+        }
+    }
+    return max <= min;
 }
 
 double computeScoreLin(double* vertex1, std::vector<double> query) {

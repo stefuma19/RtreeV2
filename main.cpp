@@ -1,5 +1,5 @@
-#include <iostream>
 #include "RTree.h"
+#include <iostream>
 #include <utility>
 #include <vector>
 #include <fstream>
@@ -130,28 +130,7 @@ double *convertDoubleVectorToIntPointer(const vector<double> &doubleVec) {
     return intPtr;
 }
 
-double dist_line_point(const vector<double> &point, const vector<double> &query) {
-    double dist = 0.0;
-    int len = query.size();
-
-    for (int i = 0; i < len; i++) {
-        double num = 0.0;
-        double den = 0.0;
-
-        for (int j = 0; j < len; j++) {
-            num += query[j] * point[j];
-            den += query[j] * query[j];
-        }
-
-        double d = point[i] - (query[i] * num / den);
-        d = d * d;
-        dist += d;
-    }
-
-    return std::sqrt(dist);
-}
-
-std::vector<double> computePreferenceLine(const std::vector<double> query) {
+std::vector<double> computePreferenceLine(const vector<double> &query) {
     int len = query.size();
     std::vector<double> prefLine(len);
     double sum = 0.0;
@@ -159,7 +138,7 @@ std::vector<double> computePreferenceLine(const std::vector<double> query) {
 
     for (i = 0; i < len; i++) {
         if(query[i] == 0){
-            prefLine[i] = 1/0.01; //TODO: DECIDE IF KEEP 0.01 OR CHANGE IT IN ANOTHER WAY
+            prefLine[i] = 1/0.001; //TODO: DECIDE IF KEEP 0.01 OR CHANGE IT IN ANOTHER WAY
         } else {
             prefLine[i] = 1/query[i];
         }
@@ -173,6 +152,30 @@ std::vector<double> computePreferenceLine(const std::vector<double> query) {
     return prefLine;
 }
 
+// Compute the distance between a point and the preference line given the query vector. The preference line is computed
+// as the inverse of the query vector inside this function.
+double dist_line_point(const vector<double> &point, const vector<double> &prefLine, double den) {
+
+    double dist = 0.0;
+
+    for (int i = 0; i < DIM; i++) {
+        double num = 0.0;
+        //double den = 0.0;
+
+        for (int j = 0; j < DIM; j++) {
+            num += prefLine[j] * point[j];
+            //den += query[j] * query[j];
+        }
+
+        double d = point[i] - (prefLine[i] * num / den);
+        d = d * d;
+        dist += d;
+    }
+
+    return std::sqrt(dist);
+}
+
+/*
 std::vector<MyTuple> readCSVLin(const string &filename, std::vector<double> query) {
     std::vector<MyTuple> data;  // Vector to store the vectors of values
     double score;
@@ -207,7 +210,9 @@ std::vector<MyTuple> readCSVLin(const string &filename, std::vector<double> quer
     file.close();
     return data;
 }
+*/
 
+/*
 std::vector<MyTuple> readCSVDir(const string &filename, std::vector<double> query) {
     std::vector<MyTuple> data;  // Vector to store the vectors of values
     double score;
@@ -245,6 +250,7 @@ std::vector<MyTuple> readCSVDir(const string &filename, std::vector<double> quer
     file.close();
     return data;
 }
+*/
 
 std::vector<MyTuple> createDataVectorFromCSV(const string &filename) {
 
@@ -286,7 +292,7 @@ void sequentialLinearWithVector(std::vector<MyTuple> points, std::vector<double>
 
     auto startTimeLinSeq = std::chrono::high_resolution_clock::now();
 
-    for (i = 0; i < size; i++) {
+    for (i = 0; i < k; i++) {
         score = 0;
         for (j = 0; j < DIM; j++) {
             score += points[i][j] * query[j]; //Compute the score of the current point
@@ -374,11 +380,18 @@ void sequentialDirectionalWithVector(std::vector<MyTuple> points, std::vector<do
 
     auto startTimeDirSeq = std::chrono::high_resolution_clock::now();
 
+    std::vector<double> prefLine = computePreferenceLine(query);
+
+    double den = 0;
+    for (i = 0; i < DIM; i++) {
+        den += prefLine[i] * prefLine[i];
+    }
+
     for (i = 0; i < k; i++) { //The first k elements will certainly add in the initial top-k
         score = 0;
         for (j = 0; j < DIM; j++) {
             score += points[i][j] * query[j];
-            score = BETA * score + (1 - BETA) * dist_line_point(points[i], query);
+            score = BETA * score + (1 - BETA) * dist_line_point(points[i], prefLine, den);
         }
         heap.emplace(score);
     }
@@ -387,7 +400,7 @@ void sequentialDirectionalWithVector(std::vector<MyTuple> points, std::vector<do
         score = 0;
         for (j = 0; j < DIM; j++) {
             score += points[i][j] * query[j];
-            score = BETA * score + (1 - BETA) * dist_line_point(points[i], query);
+            score = BETA * score + (1 - BETA) * dist_line_point(points[i], prefLine, den);
         }
 
         if (score < heap.top().score) {
@@ -652,6 +665,7 @@ int main() {
         query.push_back(1 / DIM);
     }
 
+    /*
     //std::cout << "----------------LINEAR SEQUENTIAL----------------" << std::endl;
     auto startTimeLinSeq = std::chrono::high_resolution_clock::now();
 
@@ -661,10 +675,6 @@ int main() {
     auto endTimeLinSeq = std::chrono::high_resolution_clock::now();
     auto durationLinSeq = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeLinSeq - startTimeLinSeq);
 
-
-    /*for (int i = k-1; i >= 0; i--){
-        std::cout << i << " tuples score: " << tuplesLin[i].back() << std::endl;
-    }*/
 
     timeLinSeq += durationLinSeq.count();
 
@@ -677,16 +687,14 @@ int main() {
     auto endTimeDirSeq = std::chrono::high_resolution_clock::now();
     auto durationDirSeq = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeDirSeq - startTimeDirSeq);
 
-    /*for (i = k-1; i >= 0; i--){
-        std::cout << i << " tuples score: " << tuplesDir[i].back() << std::endl;
-    }*/
-
     timeDirSeq += durationDirSeq.count();
 
     std::cout << "\n - Results for Sequential Execution" << std::endl;
 
     std::cout << "\nExecution time LinSeq: " << timeLinSeq << " milliseconds." << std::endl;
     std::cout << "Execution time DirSeq: " << timeDirSeq << " milliseconds." << std::endl;
+
+     */
 
     //Print to have a useful output for the Excel
     std::cout << "\n - Results for Rtree Execution" << std::endl;

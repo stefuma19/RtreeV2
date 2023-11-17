@@ -19,7 +19,7 @@
 #include <nlopt.h>
 
 #define BETA 0.66
-#define DIM 3
+#define DIM 2
 #define MINIMIZATION 0 // 0 for exact minimization, 1 for optimized
 
 #define ASSERT assert // RTree uses ASSERT( condition )

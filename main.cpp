@@ -1,11 +1,11 @@
 #include <iostream>
 #include "RTree.h"
+#include <utility>
 #include <vector>
 #include <fstream>
 #include <sstream>
 #include <chrono>
 #include <nlopt.hpp>
-#include <locale>
 
 using namespace std;
 
@@ -13,14 +13,14 @@ typedef int ValueType;
 typedef std::vector<double> MyTuple;
 
 //Helper class to replace decimal separator
-template <class charT, charT sep>
-class punct_facet: public std::numpunct<charT> {
+template<class charT, charT sep>
+class punct_facet : public std::numpunct<charT> {
 protected:
-    virtual charT do_decimal_point() const override { return sep; }
+    charT do_decimal_point() const override { return sep; }
 };
 
 
-#define DIM 3
+#define DIM 2
 #define BETA 0.66
 #if DIM == 2
 #define LEAF_CAPACITY 100
@@ -38,14 +38,11 @@ protected:
 #define LEAF_CAPACITY 39
 #endif
 
-
-struct Rect
-{
-    Rect() {}
+struct Rect {
+    Rect() = default;
 
     // Constructor for n dimensions
-    Rect(const std::vector<double>& a_min, const std::vector<double>& a_max)
-    {
+    Rect(const std::vector<double> &a_min, const std::vector<double> &a_max) {
         min = a_min;
         max = a_max;
     }
@@ -54,18 +51,34 @@ struct Rect
     std::vector<double> max;
 };
 
-bool compareLastColumn(const MyTuple& tuple1, const MyTuple& tuple2) {
+// Define the Object class
+struct NodeWithScore {
+
+    explicit NodeWithScore(double s) {
+        score = s;
+    }
+
+    double score;
+
+    bool operator<(const NodeWithScore &a) const {
+        return score < a.score;
+    }
+};
+
+
+
+bool compareLastColumn(const MyTuple &tuple1, const MyTuple &tuple2);
+
+bool compareLastColumn(const MyTuple &tuple1, const MyTuple &tuple2) {
     // Assuming the last column is accessed using tuple.back()
     return tuple1.back() < tuple2.back();
 }
 
-std::vector<Rect> createRectanglesFromCSV(const std::string& filename, int numDimensions)
-{
+std::vector<Rect> createRectanglesFromCSV(const string &filename, int numDimensions) {
     std::vector<Rect> rectangles;
     std::ifstream file(filename);
 
-    if (!file)
-    {
+    if (!file) {
         std::cout << "Failed to open the file: " << filename << std::endl;
         return rectangles;
     }
@@ -73,8 +86,7 @@ std::vector<Rect> createRectanglesFromCSV(const std::string& filename, int numDi
     std::string line;
     std::getline(file, line); // Skip the header line
 
-    while (std::getline(file, line))
-    {
+    while (std::getline(file, line)) {
         std::vector<double> minValues(numDimensions);
         std::vector<double> maxValues(numDimensions);
 
@@ -85,22 +97,18 @@ std::vector<Rect> createRectanglesFromCSV(const std::string& filename, int numDi
         // Skip the first column
         std::getline(ss, value, ',');
 
-        while (std::getline(ss, value, ','))
-        {
+        while (std::getline(ss, value, ',')) {
             //cout << score << endl;
-            if (dimension < numDimensions){
+            if (dimension < numDimensions) {
                 minValues[dimension] = std::stod(value);
                 maxValues[dimension] = std::stod(value);
             }
             dimension++;
         }
 
-        if (dimension == numDimensions)
-        {
+        if (dimension == numDimensions) {
             rectangles.emplace_back(minValues, maxValues);
-        }
-        else
-        {
+        } else {
             std::cout << "Invalid row format: " << line << std::endl;
         }
     }
@@ -110,20 +118,19 @@ std::vector<Rect> createRectanglesFromCSV(const std::string& filename, int numDi
     return rectangles;
 }
 
-double* convertDoubleVectorToIntPointer(const std::vector<double>& doubleVec)
-{
+double *convertDoubleVectorToIntPointer(const vector<double> &doubleVec) {
     static std::vector<double> intVec; // Static vector to ensure the memory is not deallocated
 
     // Convert std::vector<double> to std::vector<int>
     intVec.assign(doubleVec.begin(), doubleVec.end());
 
     // Obtain a pointer to the first element of the std::vector<int>
-    double* intPtr = intVec.data();
+    double *intPtr = intVec.data();
 
     return intPtr;
 }
 
-double dist_line_point(const std::vector<double>& point, const std::vector<double>& query) {
+double dist_line_point(const vector<double> &point, const vector<double> &query) {
     double dist = 0.0;
     int len = query.size();
 
@@ -144,7 +151,29 @@ double dist_line_point(const std::vector<double>& point, const std::vector<doubl
     return std::sqrt(dist);
 }
 
-std::vector<MyTuple> readCSVLin(const std::string& filename, std::vector<double> query) {
+std::vector<double> computePreferenceLine(const std::vector<double> query) {
+    int len = query.size();
+    std::vector<double> prefLine(len);
+    double sum = 0.0;
+    int i;
+
+    for (i = 0; i < len; i++) {
+        if(query[i] == 0){
+            prefLine[i] = 1/0.01; //TODO: DECIDE IF KEEP 0.01 OR CHANGE IT IN ANOTHER WAY
+        } else {
+            prefLine[i] = 1/query[i];
+        }
+        sum += prefLine[i];
+    }
+
+    for (i = 0; i < len; i++) {
+        prefLine[i] = prefLine[i] / sum;
+    }
+
+    return prefLine;
+}
+
+std::vector<MyTuple> readCSVLin(const string &filename, std::vector<double> query) {
     std::vector<MyTuple> data;  // Vector to store the vectors of values
     double score;
     int i;
@@ -163,7 +192,7 @@ std::vector<MyTuple> readCSVLin(const std::string& filename, std::vector<double>
         // Skip the first value in each line
         std::getline(iss, token, ',');
 
-        i= 0;
+        i = 0;
         // Read the remaining values
         while (std::getline(iss, token, ',')) {
             values.push_back(std::stod(token));
@@ -179,7 +208,7 @@ std::vector<MyTuple> readCSVLin(const std::string& filename, std::vector<double>
     return data;
 }
 
-std::vector<MyTuple> readCSVDir(const std::string& filename, std::vector<double> query) {
+std::vector<MyTuple> readCSVDir(const string &filename, std::vector<double> query) {
     std::vector<MyTuple> data;  // Vector to store the vectors of values
     double score;
     int i;
@@ -198,7 +227,7 @@ std::vector<MyTuple> readCSVDir(const std::string& filename, std::vector<double>
         // Skip the first value in each line
         std::getline(iss, token, ',');
 
-        i= 0;
+        i = 0;
         // Read the remaining values
         while (std::getline(iss, token, ',')) {
             values.push_back(std::stod(token));
@@ -217,23 +246,73 @@ std::vector<MyTuple> readCSVDir(const std::string& filename, std::vector<double>
     return data;
 }
 
+std::vector<MyTuple> createDataVectorFromCSV(const string &filename) {
 
+    std::vector<MyTuple> data;  // Vector to store the vectors of values
 
-// Define the Object class
-struct NodeWithScore {
-
-    NodeWithScore(double s) {
-        score = s;
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Error opening file: " << filename << std::endl;
     }
+    std::string line;
+    std::getline(file, line);  // Skip the first line (header)
+
+    while (std::getline(file, line)) {
+        std::vector<double> values; //Current tuple
+        std::istringstream iss(line);
+        std::string token;
+        // Skip the first value in each line (the id)
+        std::getline(iss, token, ',');
+
+        // Read and save the remaining values in values
+        while (std::getline(iss, token, ',')) {
+            values.push_back(std::stod(token));
+        }
+        data.push_back(values); // Add current tuple to vector of tuples
+    }
+    file.close();
+
+    return data;
+}
+
+void sequentialLinearWithVector(std::vector<MyTuple> points, std::vector<double> query, int k) {
+
+    std::priority_queue<NodeWithScore> heap;
 
     double score;
+    int size = points.size();
+    int i;
+    int j;
 
-    bool operator<(const NodeWithScore& a) const{
-        return score < a.score;
+    auto startTimeLinSeq = std::chrono::high_resolution_clock::now();
+
+    for (i = 0; i < size; i++) {
+        score = 0;
+        for (j = 0; j < DIM; j++) {
+            score += points[i][j] * query[j]; //Compute the score of the current point
+        }
+        heap.push(NodeWithScore(score)); //Insert the point in the heap
     }
-};
 
-void sequentialLinear(const std::string& filename, std::vector<double> query, int k) {
+    for (; i < size; i++) {
+        score = 0;
+        for (j = 0; j < DIM; j++) {
+            score += points[i][j] * query[j]; //Compute the score of the current point
+        }
+
+        if (score < heap.top().score) {
+            heap.pop();
+            heap.emplace(score); //Insert the point in the heap if its score is greater than the worst score in the heap
+        }
+    }
+
+    auto endTimeLinSeq = std::chrono::high_resolution_clock::now();
+    auto durationLinSeq = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeLinSeq - startTimeLinSeq);
+    std::cout << "[K = " << k << " ] - Linear Sequential: " << durationLinSeq.count() << " ms" << std::endl;
+}
+
+// Reads the CSV file containing the dataset and performs the sequential linear top-k query
+void sequentialLinear(const std::string &filename, std::vector<double> query, int k) {
 
     std::priority_queue<NodeWithScore> heap;
 
@@ -250,22 +329,27 @@ void sequentialLinear(const std::string& filename, std::vector<double> query, in
     std::string line;
     std::getline(file, line);  // Skip the first line (header)
     while (std::getline(file, line)) {
+        std::vector<double> values;
         std::istringstream iss(line);
         std::string token;
         score = 0;
         // Skip the first value in each line
         std::getline(iss, token, ',');
 
-        i= 0;
+        i = 0;
         // Read the remaining values
         while (std::getline(iss, token, ',')) {
             score += std::stod(token) * query[i];
             i++;
+            values.push_back(std::stod(token));
+            i++;
         }
 
-        if (j < k){
+        data.push_back(values);
+
+        if (j < k) {
             heap.push(NodeWithScore(score));
-        } else if (score < heap.top().score){
+        } else if (score < heap.top().score) {
             heap.pop();
             heap.push(NodeWithScore(score));
         }
@@ -276,13 +360,49 @@ void sequentialLinear(const std::string& filename, std::vector<double> query, in
     auto durationLinSeq = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeLinSeq - startTimeLinSeq);
     std::cout << "Linear Sequential: " << durationLinSeq.count() << " ms" << std::endl;
 
-    for(j=0; j<k; j++){
-        std::cout << heap.top().score << std::endl;
-        heap.pop();
-    }
+    sequentialLinearWithVector(data, std::move(query), k);
 }
 
-void sequentialDirectional(const std::string& filename, std::vector<double> query, int k) {
+//Performs sequential directional query score computation if data is already stored in a vector
+void sequentialDirectionalWithVector(std::vector<MyTuple> points, std::vector<double> query, int k) {
+    std::priority_queue<NodeWithScore> heap;
+
+    double score;
+    int size = points.size();
+    int i;
+    int j = 0;
+
+    auto startTimeDirSeq = std::chrono::high_resolution_clock::now();
+
+    for (i = 0; i < k; i++) { //The first k elements will certainly add in the initial top-k
+        score = 0;
+        for (j = 0; j < DIM; j++) {
+            score += points[i][j] * query[j];
+            score = BETA * score + (1 - BETA) * dist_line_point(points[i], query);
+        }
+        heap.emplace(score);
+    }
+
+    for (; i < size; i++) {
+        score = 0;
+        for (j = 0; j < DIM; j++) {
+            score += points[i][j] * query[j];
+            score = BETA * score + (1 - BETA) * dist_line_point(points[i], query);
+        }
+
+        if (score < heap.top().score) {
+            heap.pop();
+            heap.emplace(score);
+        }
+    }
+    auto endTimeDirSeq = std::chrono::high_resolution_clock::now();
+    auto durationDirSeq = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeDirSeq - startTimeDirSeq);
+    std::cout << "[K = " << k << " ] - Directional Sequential: " << durationDirSeq.count() << " ms" << std::endl;
+
+}
+
+// Reads the CSV file containing the dataset and performs the sequential directional top-k query
+void sequentialDirectional(const std::string &filename, std::vector<double> query, int k) {
     std::priority_queue<NodeWithScore> heap;
 
     std::vector<MyTuple> data;  // Vector to store the vectors of values
@@ -300,17 +420,17 @@ void sequentialDirectional(const std::string& filename, std::vector<double> quer
 
     double point[DIM];
 
-    for(j=0; j<k; j++){
+    for (j = 0; j < k; j++) {
         std::getline(file, line);
         std::istringstream iss(line);
         std::string token;
         score = 0;
         // Skip the first value in each line
         std::getline(iss, token, ',');
-        i= 0;
+        i = 0;
         // Read the remaining values
         while (std::getline(iss, token, ',')) {
-            point[i]=(std::stod(token));
+            point[i] = (std::stod(token));
             score += std::stod(token) * query[i];
             i++;
         }
@@ -325,17 +445,17 @@ void sequentialDirectional(const std::string& filename, std::vector<double> quer
         score = 0;
         // Skip the first value in each line
         std::getline(iss, token, ',');
-        i= 0;
+        i = 0;
         // Read the remaining values
         while (std::getline(iss, token, ',')) {
-            point[i]=(std::stod(token));
+            point[i] = (std::stod(token));
             score += std::stod(token) * query[i];
             i++;
         }
 
         score = BETA * score + (1 - BETA) * dist_line_point(point, query);
 
-        if (score < heap.top().score){
+        if (score < heap.top().score) {
             heap.pop();
             heap.emplace(score);
         }
@@ -346,44 +466,53 @@ void sequentialDirectional(const std::string& filename, std::vector<double> quer
     auto durationDirSeq = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeDirSeq - startTimeDirSeq);
     std::cout << "Directional Sequential: " << durationDirSeq.count() << " ms" << std::endl;
 
+    /*
     for(j=0; j<k; j++){
         std::cout << heap.top().score << std::endl;
         heap.pop();
     }
+    */
 }
 
 int main() {
-    //
+
     typedef RTree<ValueType, double, DIM, float, LEAF_CAPACITY> MyTree;
     MyTree tree;
 
-    //std::string filePath = "../datasets/dataset_small.csv";
-    //std::string filePath = "../datasets/uniform/5D/uniform_5M_5.csv";
-    //std::string filePath = "../datasets/cor_neg_1M_2.csv";
     //std::string filePath = "../datasets/cor_neg/2D/cor_neg_1M_2.csv";
-    std::string filePath = "../datasets/cor_neg/3D/cor_neg_1M_3.csv";
-    //std::string filePath = "../datasets/cor_neg_1k_4.csv";
-    //std::string filePath = "../datasets/cor_neg_1k_2.csv";
-    //std::string filePath = "../datasets/nba/nba.csv";
+    std::string filePath = "../datasets/cor_neg/2D/cor_neg_1M_2.csv";
     //std::string filePath = "../datasets/household/household_cleaned.csv";
 
     std::vector<double> queryIniziale = {0.33, 0.33, 0.34};
+    std::vector<int> k_values = {1, 5, 10, 50, 100, 500};
 
+    std::vector<MyTuple> data;  // Vector to store the vectors of values
+    data = createDataVectorFromCSV(filePath);
+
+    for (int k_value: k_values) {
+        //printf("K = %d\n", k_value);
+        //sequentialLinear(filePath, queryIniziale, k_value);
+        //sequentialDirectional(filePath, queryIniziale, k_value);
+        sequentialLinearWithVector(data, queryIniziale, k_value);
+        sequentialDirectionalWithVector(data, queryIniziale, k_value);
+    }
+
+    //return 0;
+    /*
     sequentialLinear(filePath, queryIniziale, 10);
     sequentialDirectional(filePath, queryIniziale, 10);
-
+    */
     //Tree creation
     std::vector<Rect> rectangles = createRectanglesFromCSV(filePath, DIM);
 
     int i = 0;
     // Process the created rectangles as needed
-    for (const Rect& rect : rectangles)
-    {
+    for (const Rect &rect: rectangles) {
         std::vector<double> minValues = rect.min;
         std::vector<double> maxValues = rect.max;
 
-        double* min = convertDoubleVectorToIntPointer(minValues);
-        double* max = convertDoubleVectorToIntPointer(minValues);
+        double *min = convertDoubleVectorToIntPointer(minValues);
+        double *max = convertDoubleVectorToIntPointer(minValues);
 
         tree.Insert(min, max, i);
         i++;
@@ -430,7 +559,6 @@ int main() {
     timeLinRTvect.reserve(9);
     std::vector<double> numPointDirvect;
     timeLinRTvect.reserve(9);
-
 
 
     std::ifstream inputFile("../utilities/k.txt");
@@ -490,7 +618,7 @@ int main() {
             }
         }
 
-            // Print to have a nice output
+        // Print to have a nice output
         /*
         std::cout << "\nExecution time LinRT: " << static_cast<double> (timeLinRT) / numQ << " microseconds." << std::endl;
         std::cout << "Execution time DirRT: " << static_cast<double>(timeDirRT) / numQ << " microseconds." << std::endl;
@@ -504,7 +632,7 @@ int main() {
         std::cout << "Accesses to Points Directional: " << static_cast<double>(numPointDir) / numQ << std::endl;
          */
 
-            //Print to have an usefull output for the excel
+        //Print to have a useful output for the Excel
         timeLinRTvect.push_back(static_cast<double> (timeLinRT) / numQ);
         timeDirRTvect.push_back(static_cast<double> (timeDirRT) / numQ);
 
@@ -520,7 +648,7 @@ int main() {
 
     std::vector<double> query;
     query.reserve(DIM);
-    for (int i = 0; i < DIM; i++) {
+    for (i = 0; i < DIM; i++) {
         query.push_back(1 / DIM);
     }
 
@@ -560,49 +688,49 @@ int main() {
     std::cout << "\nExecution time LinSeq: " << timeLinSeq << " milliseconds." << std::endl;
     std::cout << "Execution time DirSeq: " << timeDirSeq << " milliseconds." << std::endl;
 
-        //Print to have an usefull output for the excel
+    //Print to have a useful output for the Excel
     std::cout << "\n - Results for Rtree Execution" << std::endl;
 
     std::cout << "\nLinear Rtree time:" << std::endl;
-    for (const auto& element : timeLinRTvect) {
+    for (const auto &element: timeLinRTvect) {
         std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
         std::cout << element << std::endl;
     }
 
     std::cout << "\nLinear Rtree numPoint:" << std::endl;
-    for (const auto& element : numPointLinvect) {
+    for (const auto &element: numPointLinvect) {
         std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
         std::cout << element << std::endl;
     }
     std::cout << "\nLinear Rtree numLeaves:" << std::endl;
-    for (const auto& element : numLeavesLinvect) {
+    for (const auto &element: numLeavesLinvect) {
         std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
         std::cout << element << std::endl;
     }
     std::cout << "\nLinear Rtree numBoxes:" << std::endl;
-    for (const auto& element : numBoxLinvect) {
+    for (const auto &element: numBoxLinvect) {
         std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
         std::cout << element << std::endl;
     }
 
     std::cout << "\nDirectional Rtree time:" << std::endl;
-    for (const auto& element : timeDirRTvect) {
+    for (const auto &element: timeDirRTvect) {
         std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
         std::cout << element << std::endl;
     }
 
     std::cout << "\nDirectional Rtree numPoint:" << std::endl;
-    for (const auto& element : numPointDirvect) {
+    for (const auto &element: numPointDirvect) {
         std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
         std::cout << element << std::endl;
     }
     std::cout << "\nDirectional Rtree numLeaves:" << std::endl;
-    for (const auto& element : numLeavesDirvect) {
+    for (const auto &element: numLeavesDirvect) {
         std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
         std::cout << element << std::endl;
     }
     std::cout << "\nDirectional Rtree numBoxes:" << std::endl;
-    for (const auto& element : numBoxDirvect) {
+    for (const auto &element: numBoxDirvect) {
         std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
         std::cout << element << std::endl;
     }

@@ -573,6 +573,8 @@ int main() {
     std::vector<double> numPointDirvect;
     timeLinRTvect.reserve(9);
 
+    std::vector<double> totalNonLinearProblemsSolvedVect;
+    std::vector<double> totalNonLinearProblemsSolvedTimeVect;
 
     std::ifstream inputFile("../utilities/k.txt");
 
@@ -657,6 +659,12 @@ int main() {
         numLeavesDirvect.push_back(static_cast<double>(numLeavesDir) / numQ);
         numPointDirvect.push_back(static_cast<double>(numPointDir) / numQ);
 
+        totalNonLinearProblemsSolvedVect.push_back(static_cast<double>(totalNonLinearProblemsSolved)/numQ);
+        totalNonLinearProblemsSolvedTimeVect.push_back(static_cast<double>(totalTimeNonLinearProblemsExecution) /numQ);
+        //RESETTARE totalNonLinearProblemsSolved; e tempo
+        totalNonLinearProblemsSolved = 0;
+        totalTimeNonLinearProblemsExecution = 0;
+
     }
 
     std::vector<double> query;
@@ -739,6 +747,17 @@ int main() {
     }
     std::cout << "\nDirectional Rtree numBoxes:" << std::endl;
     for (const auto &element: numBoxDirvect) {
+        std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
+        std::cout << element << std::endl;
+    }
+
+    std::cout << "\nDirectional Rtree Problems:" << std::endl;
+    for (const auto &element: totalNonLinearProblemsSolvedVect) {
+        std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
+        std::cout << element << std::endl;
+    }
+    std::cout << "\nDirectional Rtree ProblemTime:" << std::endl;
+    for (const auto &element: totalNonLinearProblemsSolvedTimeVect) {
         std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
         std::cout << element << std::endl;
     }

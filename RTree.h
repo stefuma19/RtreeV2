@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <numeric>
 #include <queue>
+#include <chrono>
 
 #include <algorithm>
 #include <functional>
@@ -31,7 +32,7 @@
 #endif //Max
 
 int totalNonLinearProblemsSolved = 0;
-auto totalTimeNonLinearProblemsExecution = 0;
+double totalTimeNonLinearProblemsExecution = 0;
 
 //
 // RTree.h
@@ -1818,6 +1819,7 @@ double costFunction_exact(unsigned n, const double *x, double *grad, void *data)
 
 double quadratic_minimization_exact(double* vertex1, double* vertex2, std::vector<double> queryVec) {
 
+    auto startTimeProblemResolution = std::chrono::high_resolution_clock::now();
     double lb[DIM];
     double ub[DIM];
     for (int i = 0; i < DIM; i++) {
@@ -1848,6 +1850,10 @@ double quadratic_minimization_exact(double* vertex1, double* vertex2, std::vecto
 
     //Vertex 2 is the initial guess
     nlopt_result res=nlopt_optimize(opt, lb,&minf);
+
+    auto endTimeProblemResolution = std::chrono::high_resolution_clock::now();
+    auto durationProblemResolution = std::chrono::duration_cast<std::chrono::microseconds>(endTimeProblemResolution - startTimeProblemResolution);
+    totalTimeNonLinearProblemsExecution += durationProblemResolution.count();
 
     return minf;
 }
@@ -2044,6 +2050,7 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
     for(int i = 0; i < m_root->m_count; i++)
     {
         nodeWithScore.node = m_root->m_branch[i].m_child;
+        totalNonLinearProblemsSolved++;
         switch(MINIMIZATION) {
             case(0):
                 nodeWithScore.score = quadratic_minimization_exact(m_root->m_branch[i].m_rect.m_min,
@@ -2107,6 +2114,7 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
             // This is an internal node in the tree
             for(int index=0; index < a_node.node->m_count; index++)
             {
+                totalNonLinearProblemsSolved++;
                 switch(MINIMIZATION) {
                     case(0):
                         current_score = quadratic_minimization_exact(a_node.node->m_branch[index].m_rect.m_min,

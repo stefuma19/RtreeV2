@@ -130,28 +130,6 @@ double *convertDoubleVectorToIntPointer(const vector<double> &doubleVec) {
     return intPtr;
 }
 
-std::vector<double> computePreferenceLine(const vector<double> &query) {
-    int len = query.size();
-    std::vector<double> prefLine(len);
-    double sum = 0.0;
-    int i;
-
-    for (i = 0; i < len; i++) {
-        if(query[i] == 0){
-            prefLine[i] = 1/0.001; //TODO: DECIDE IF KEEP 0.01 OR CHANGE IT IN ANOTHER WAY
-        } else {
-            prefLine[i] = 1/query[i];
-        }
-        sum += prefLine[i];
-    }
-
-    for (i = 0; i < len; i++) {
-        prefLine[i] = prefLine[i] / sum;
-    }
-
-    return prefLine;
-}
-
 // Compute the distance between a point and the preference line given the query vector. The preference line is computed
 // as the inverse of the query vector inside this function.
 double dist_line_point(const vector<double> &point, const vector<double> &prefLine, double den) {
@@ -383,9 +361,7 @@ void sequentialDirectionalWithVector(std::vector<MyTuple> points, std::vector<do
     std::vector<double> prefLine = computePreferenceLine(query);
 
     double den = 0;
-    for (i = 0; i < DIM; i++) {
-        den += prefLine[i] * prefLine[i];
-    }
+    den = computeDenFromPrefLine(prefLine);
 
     for (i = 0; i < k; i++) { //The first k elements will certainly add in the initial top-k
         score = 0;
@@ -414,6 +390,7 @@ void sequentialDirectionalWithVector(std::vector<MyTuple> points, std::vector<do
 
 }
 
+/*
 // Reads the CSV file containing the dataset and performs the sequential directional top-k query
 void sequentialDirectional(const std::string &filename, std::vector<double> query, int k) {
     std::priority_queue<NodeWithScore> heap;
@@ -479,13 +456,8 @@ void sequentialDirectional(const std::string &filename, std::vector<double> quer
     auto durationDirSeq = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeDirSeq - startTimeDirSeq);
     std::cout << "Directional Sequential: " << durationDirSeq.count() << " ms" << std::endl;
 
-    /*
-    for(j=0; j<k; j++){
-        std::cout << heap.top().score << std::endl;
-        heap.pop();
-    }
-    */
 }
+*/
 
 int main() {
 
@@ -493,7 +465,8 @@ int main() {
     MyTree tree;
 
     //std::string filePath = "../datasets/cor_neg/2D/cor_neg_1M_2.csv";
-    std::string filePath = "../datasets/cor_neg/2D/cor_neg_1M_2.csv";
+    //std::string filePath = "../datasets/cor_neg/2D/cor_neg_1M_2.csv";
+    std::string filePath = "../datasets/cor_neg/2D/cor_neg_100K_2.csv";
     //std::string filePath = "../datasets/household/household_cleaned.csv";
 
     std::vector<double> queryIniziale = {0.33, 0.33, 0.34};
@@ -625,6 +598,7 @@ int main() {
                 //std::cout << "----------------DIRECTIONAL RTREE----------------" << std::endl;
                 auto startTimeDirRT = std::chrono::high_resolution_clock::now();
                 tree.DirectionalTopKQueryRTree(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
+                //tree.DirectionalTopKQueryRTreeRough(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
                 auto endTimeDirRT = std::chrono::high_resolution_clock::now();
                 auto durationDirRT = std::chrono::duration_cast<std::chrono::microseconds>(
                         endTimeDirRT - startTimeDirRT);

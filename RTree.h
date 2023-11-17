@@ -405,6 +405,8 @@ public:
   std::vector<Rect> ListTree() const;
   std::priority_queue<BranchWithScore> linearTopKQueryRTree(int k, std::vector<double> query, int* box, int* leaves, int* point);
   std::priority_queue<BranchWithScore> DirectionalTopKQueryRTree(int k, std::vector<double> query, int* box, int* leaves, int* point);
+  std::priority_queue<BranchWithScore> DirectionalTopKQueryRTreeRough(int k, std::vector<double> query, int* box, int* leaves, int* point);
+  std::priority_queue<BranchWithScore> DirectionalTopKQueryRTreeMixed(int k, std::vector<double> query, int* box, int* leaves, int* point);
   void CountBoxesLeavesAndPoints(int* a_boxCount, int* a_leafCount, int* a_pointCount);
 };
 
@@ -1720,6 +1722,35 @@ std::vector<typename RTREE_QUAL::Rect> RTREE_QUAL::ListTree() const
   return treeList;
 }
 
+
+struct OptProblemData {
+    double * query;
+    double * prefLine;
+    double den;
+};
+
+std::vector<double> computePreferenceLine(const std::vector<double> &query) {
+    int len = query.size();
+    std::vector<double> prefLine(len);
+    double sum = 0.0;
+    int i;
+
+    for (i = 0; i < len; i++) {
+        if(query[i] == 0){
+            prefLine[i] = 1/0.001;
+        } else {
+            prefLine[i] = 1/query[i];
+        }
+        sum += prefLine[i];
+    }
+
+    for (i = 0; i < len; i++) {
+        prefLine[i] = prefLine[i] / sum;
+    }
+
+    return prefLine;
+}
+
 bool intersects(double* vertex_low, double* vertex_high, std::vector<double> prefLine){
     double max, min;
 
@@ -1745,20 +1776,20 @@ double computeScoreLin(double* vertex1, std::vector<double> query) {
     return score;
 }
 
-double dist_line_point(const double *point, const std::vector<double>& query) {
+double dist_line_point(const double *point, const std::vector<double>& preferenceLine, double den) {
     double dist = 0.0;
-    int len = query.size();
+    int len = preferenceLine.size();
 
     for (int i = 0; i < len; i++) {
         double num = 0.0;
-        double den = 0.0;
+        //double den = 0.0;
 
         for (int j = 0; j < len; j++) {
-            num += query[j] * point[j];
-            den += query[j] * query[j];
+            num += preferenceLine[j] * point[j];
+            //den += preferenceLine[j] * preferenceLine[j];
         }
 
-        double d = point[i] - (query[i] * num / den);
+        double d = point[i] - (preferenceLine[i] * num / den);
         d = d * d;
         dist += d;
     }
@@ -1787,12 +1818,37 @@ double dist_line_point2(const double *point, const double* query) {
     return std::sqrt(dist);
 }
 
-double computeScoreDir(double* vertex1, std::vector<double> query) {
+double dist_line_point2(const double *point, const double* prefLine, const double den) {
+    double dist = 0.0;
+    int len = DIM;
+
+    for (int i = 0; i < len; i++) {
+        double num = 0.0;
+        for (int j = 0; j < len; j++) {
+            num += prefLine[j] * point[j];
+        }
+        double d = point[i] - (prefLine[i] * num / den);
+        d = d * d;
+        dist += d;
+    }
+
+    return std::sqrt(dist);
+}
+
+double computeDenFromPrefLine(std::vector<double> prefLine){
+    double den = 0;
+    for (int i = 0; i < DIM; i++) {
+        den += prefLine[i] * prefLine[i];
+    }
+    return den;
+}
+
+double computeScoreDir(double* vertex1, std::vector<double> query, std::vector<double> prefLine, double den) {
     double score = 0;
     for(int i = 0; i < query.size(); i++){
         score += vertex1[i] * query[i];
     }
-    score = BETA * score + (1 - BETA) * dist_line_point(vertex1, query);
+    score = BETA * score + (1 - BETA) * dist_line_point(vertex1, prefLine, den);
     return score;
 }
 
@@ -1807,17 +1863,24 @@ double computeMinScoreLin(double* vertex1, std::vector<double> query) {
 double costFunction_exact(unsigned n, const double *x, double *grad, void *data)
 {
 
-    auto* query = reinterpret_cast<double*>(data);
+    //auto* query = reinterpret_cast<double*>(data);
+
+    auto *problemData = reinterpret_cast<struct OptProblemData*>(data);
+
+    double *query = problemData->query;
+    double *prefLine = problemData->prefLine;
+    double den = problemData->den;
 
     // return value is the value of the cost function
     double score = 0;
     for(int i = 0; i < DIM; i++) {
         score += x[i] * query[i];
     }
-    return BETA * score + (1-BETA) * dist_line_point2(x, query);
+    //return BETA * score + (1-BETA) * dist_line_point2(x, query);
+    return BETA * score + (1-BETA) * dist_line_point2(x, prefLine, den);
 }
 
-double quadratic_minimization_exact(double* vertex1, double* vertex2, std::vector<double> queryVec) {
+double quadratic_minimization_exact(double* vertex1, double* vertex2, std::vector<double> queryVec, double* prefLine, double den) {
 
     auto startTimeProblemResolution = std::chrono::high_resolution_clock::now();
     double lb[DIM];
@@ -1827,10 +1890,12 @@ double quadratic_minimization_exact(double* vertex1, double* vertex2, std::vecto
         ub[i] = vertex2[i];
     }
 
-    double query[DIM];
+    /*double query[DIM];
     for(int i = 0; i < DIM; i++) {
         query[i] = queryVec[i];
     }
+     */
+    double *query = queryVec.data();
     // Copy elements from vector to array
     std::copy(queryVec.begin(), queryVec.end(), query);
 
@@ -1839,10 +1904,16 @@ double quadratic_minimization_exact(double* vertex1, double* vertex2, std::vecto
     nlopt_opt opt;
     opt = nlopt_create(NLOPT_LN_NELDERMEAD, DIM);
 
+    struct OptProblemData problem_data{};
+    problem_data.query = query;
+    problem_data.prefLine = prefLine;
+    problem_data.den = den;
+
     nlopt_set_lower_bounds(opt,lb);
     nlopt_set_upper_bounds(opt,ub);
 
-    nlopt_set_min_objective(opt, costFunction_exact, query);
+    //nlopt_set_min_objective(opt, costFunction_exact, query);
+    nlopt_set_min_objective(opt, costFunction_exact, &problem_data);
 
     nlopt_set_xtol_rel(opt, 1e-2);
 
@@ -2046,6 +2117,9 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
     // Priority queue to store nodes based on their level
     std::priority_queue<NodeWithScore> toVisit;
 
+    std::vector<double> prefLine = computePreferenceLine(query);
+    double den = computeDenFromPrefLine(prefLine);
+
     contBox++; //root access
     for(int i = 0; i < m_root->m_count; i++)
     {
@@ -2054,7 +2128,7 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
         switch(MINIMIZATION) {
             case(0):
                 nodeWithScore.score = quadratic_minimization_exact(m_root->m_branch[i].m_rect.m_min,
-                                                                   m_root->m_branch[i].m_rect.m_max, query);
+                                                                   m_root->m_branch[i].m_rect.m_max, query, prefLine.data(), den);
                 break;
             case(1):
                 nodeWithScore.score = quadratic_minimization_opt(m_root->m_branch[i].m_rect.m_min,
@@ -2062,7 +2136,7 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
                 break;
             default:
                 nodeWithScore.score = quadratic_minimization_exact(m_root->m_branch[i].m_rect.m_min,
-                                                                   m_root->m_branch[i].m_rect.m_max, query);
+                                                                   m_root->m_branch[i].m_rect.m_max, query, prefLine.data(), den);
                 break;
         }
         toVisit.push(nodeWithScore);
@@ -2100,7 +2174,7 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
             for(int index=0; index < a_node.node->m_count; index++)
             {
                 contPoint++;
-                current_score = computeScoreDir(a_node.node->m_branch[index].m_rect.m_min, query);
+                current_score = computeScoreDir(a_node.node->m_branch[index].m_rect.m_min, query, prefLine, den);
                 if(current_score < resultList.top().score){
                     resultList.pop();
                     branchWithScore.branch = &a_node.node->m_branch[index];
@@ -2118,7 +2192,7 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
                 switch(MINIMIZATION) {
                     case(0):
                         current_score = quadratic_minimization_exact(a_node.node->m_branch[index].m_rect.m_min,
-                                                                     a_node.node->m_branch[index].m_rect.m_max, query);
+                                                                     a_node.node->m_branch[index].m_rect.m_max, query, prefLine.data(), den);
                         break;
                     case(1):
                         current_score = quadratic_minimization_opt(a_node.node->m_branch[index].m_rect.m_min,
@@ -2126,7 +2200,239 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
                         break;
                     default:
                         current_score = quadratic_minimization_exact(a_node.node->m_branch[index].m_rect.m_min,
-                                                                     a_node.node->m_branch[index].m_rect.m_max, query);
+                                                                     a_node.node->m_branch[index].m_rect.m_max, query, prefLine.data(), den);
+                        break;
+                }
+                if(current_score < resultList.top().score)  {
+                    nodeWithScore.node = a_node.node->m_branch[index].m_child;
+                    nodeWithScore.score = current_score;
+                    toVisit.push(nodeWithScore);
+                }
+            }
+        }
+    }
+
+    /*for(int i = 0; i < k; i++){
+        std::cout << i << " resultList score: " << resultList.top().score << std::endl;
+        resultList.pop();
+    }*/
+
+    /*std::cout << "contBox: " << contBox << std::endl;
+    std::cout << "contLeaf: " << contLeaf << std::endl;
+    std::cout << "contPoint: " << contPoint << std::endl;*/
+    *box += contBox;
+    *leaves += contLeaf;
+    *point += contPoint;
+
+    return resultList;
+}
+
+RTREE_TEMPLATE
+std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::DirectionalTopKQueryRTreeRough(int k, std::vector<double> query, int* box, int* leaves, int* point)
+{
+            ASSERT(m_root);
+            ASSERT(m_root->m_level >= 0);
+
+    double current_score;
+    NodeWithScore nodeWithScore;
+    BranchWithScore branchWithScore;
+    int contBox = 0;
+    int contLeaf = 0;
+    int contPoint = 0;
+
+    std::vector<double> prefLine = computePreferenceLine(query);
+    double den = computeDenFromPrefLine(prefLine);
+
+    std::priority_queue<BranchWithScore> resultList;
+
+    // Priority queue to store nodes based on their level
+    std::priority_queue<NodeWithScore> toVisit;
+
+    contBox++; //root access
+    for(int i = 0; i < m_root->m_count; i++)
+    {
+        nodeWithScore.node = m_root->m_branch[i].m_child;
+        nodeWithScore.score = computeMinScoreLin(m_root->m_branch[i].m_rect.m_min, query)*BETA;
+        toVisit.push(nodeWithScore);
+    }
+
+
+    for(int i = 0; i < k; i++){
+        branchWithScore.branch = nullptr;
+        branchWithScore.score = std::numeric_limits<double>::max();
+        resultList.push(branchWithScore);
+    }
+
+    NodeWithScore a_node;
+
+    while (!toVisit.empty()) {
+        a_node = toVisit.top(); //Get the highest priority Object
+        toVisit.pop();
+        contBox++;
+        double temp = resultList.top().score;
+        if(a_node.score > temp){
+            /*std::cout << "contBox: " << contBox << std::endl;
+            std::cout << "contLeaf: " << contLeaf << std::endl;
+            std::cout << "contPoint: " << contPoint << std::endl;*/
+            *box += contBox;
+            *leaves += contLeaf;
+            *point += contPoint;
+
+            return resultList;
+        }
+        if(a_node.node->IsLeaf())
+        {
+            contLeaf++;
+            // This is a leaf node
+            for(int index=0; index < a_node.node->m_count; index++)
+            {
+                contPoint++;
+                current_score = computeScoreDir(a_node.node->m_branch[index].m_rect.m_min, query, prefLine, den);
+                if(current_score < resultList.top().score){
+                    resultList.pop();
+                    branchWithScore.branch = &a_node.node->m_branch[index];
+                    branchWithScore.score = current_score;
+                    resultList.push(branchWithScore);
+                }
+            }
+        }
+        else
+        {
+            // This is an internal node in the tree
+            for(int index=0; index < a_node.node->m_count; index++)
+            {
+                current_score = computeMinScoreLin(a_node.node->m_branch[index].m_rect.m_min, query);
+                if(current_score < resultList.top().score)  {
+                    nodeWithScore.node = a_node.node->m_branch[index].m_child;
+                    nodeWithScore.score = current_score;
+                    toVisit.push(nodeWithScore);
+                }
+            }
+        }
+    }
+
+
+    /*for(int i = 0; i < k; i++){
+        std::cout << i << " resultList score: " << resultList.top().score << std::endl;
+        resultList.pop();
+    }*/
+
+    /*std::cout << "contBox: " << contBox << std::endl;
+    std::cout << "contLeaf: " << contLeaf << std::endl;
+    std::cout << "contPoint: " << contPoint << std::endl;*/
+    *box += contBox;
+    *leaves += contLeaf;
+    *point += contPoint;
+
+    return resultList;
+}
+
+RTREE_TEMPLATE
+std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::DirectionalTopKQueryRTreeMixed(int k,
+                                                                                                     std::vector<double> query,
+                                                                                                     int *box,
+                                                                                                     int *leaves,
+                                                                                                     int *point) 
+{
+            ASSERT(m_root);
+            ASSERT(m_root->m_level >= 0);
+
+    double current_score;
+    NodeWithScore nodeWithScore;
+    BranchWithScore branchWithScore;
+    int contBox = 0;
+    int contLeaf = 0;
+    int contPoint = 0;
+
+    std::priority_queue<BranchWithScore> resultList;
+
+    // Priority queue to store nodes based on their level
+    std::priority_queue<NodeWithScore> toVisit;
+
+    std::vector<double> prefLine = computePreferenceLine(query);
+    double den = computeDenFromPrefLine(prefLine);
+
+    contBox++; //root access
+    for(int i = 0; i < m_root->m_count; i++)
+    {
+        nodeWithScore.node = m_root->m_branch[i].m_child;
+        totalNonLinearProblemsSolved++;
+        switch(MINIMIZATION) {
+            case(0):
+                nodeWithScore.score = quadratic_minimization_exact(m_root->m_branch[i].m_rect.m_min,
+                                                                   m_root->m_branch[i].m_rect.m_max, query, prefLine.data(), den);
+                break;
+            case(1):
+                nodeWithScore.score = quadratic_minimization_opt(m_root->m_branch[i].m_rect.m_min,
+                                                                 m_root->m_branch[i].m_rect.m_max, query);
+                break;
+            default:
+                nodeWithScore.score = quadratic_minimization_exact(m_root->m_branch[i].m_rect.m_min,
+                                                                   m_root->m_branch[i].m_rect.m_max, query, prefLine.data(), den);
+                break;
+        }
+        toVisit.push(nodeWithScore);
+    }
+
+
+    for(int i = 0; i < k; i++){
+        branchWithScore.branch = nullptr;
+        branchWithScore.score = std::numeric_limits<double>::max();
+        resultList.push(branchWithScore);
+    }
+
+    NodeWithScore a_node;
+
+    while (!toVisit.empty()) {
+        a_node = toVisit.top(); //Get the highest priority Object
+        toVisit.pop();
+        contBox++;
+        double temp = resultList.top().score;
+        if(a_node.score > temp){
+            /*for(int i = 0; i < k; i++){
+                std::cout << i << " resultList score: " << resultList.top().score << std::endl;
+                resultList.pop();
+            }*/
+            *box += contBox;
+            *leaves += contLeaf;
+            *point += contPoint;
+
+            return resultList;
+        }
+        if(a_node.node->IsLeaf())
+        {
+            contLeaf++;
+            // This is a leaf node
+            for(int index=0; index < a_node.node->m_count; index++)
+            {
+                contPoint++;
+                current_score = computeScoreDir(a_node.node->m_branch[index].m_rect.m_min, query, prefLine, den);
+                if(current_score < resultList.top().score){
+                    resultList.pop();
+                    branchWithScore.branch = &a_node.node->m_branch[index];
+                    branchWithScore.score = current_score;
+                    resultList.push(branchWithScore);
+                }
+            }
+        }
+        else
+        {
+            // This is an internal node in the tree
+            for(int index=0; index < a_node.node->m_count; index++)
+            {
+                totalNonLinearProblemsSolved++;
+                switch(MINIMIZATION) {
+                    case(0):
+                        current_score = quadratic_minimization_exact(a_node.node->m_branch[index].m_rect.m_min,
+                                                                     a_node.node->m_branch[index].m_rect.m_max, query, prefLine.data(), den);
+                        break;
+                    case(1):
+                        current_score = quadratic_minimization_opt(a_node.node->m_branch[index].m_rect.m_min,
+                                                                   a_node.node->m_branch[index].m_rect.m_max, query);
+                        break;
+                    default:
+                        current_score = quadratic_minimization_exact(a_node.node->m_branch[index].m_rect.m_min,
+                                                                     a_node.node->m_branch[index].m_rect.m_max, query, prefLine.data(), den);
                         break;
                 }
                 if(current_score < resultList.top().score)  {

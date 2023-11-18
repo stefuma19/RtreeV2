@@ -576,6 +576,7 @@ int main() {
         numPointDir = 0;
 
         std::ifstream file("../queries/" + std::to_string(DIM) + "d.txt");
+        //std::ifstream file("../queries/test.txt");
         //std::ifstream file("../balanced_queries/" + std::to_string(DIM) + "d.txt");
         //std::ifstream file("../unbalanced_queries/" + std::to_string(DIM) + "d.txt");
         numQ = 0;
@@ -604,8 +605,8 @@ int main() {
 
                 //std::cout << "----------------DIRECTIONAL RTREE----------------" << std::endl;
                 auto startTimeDirRT = std::chrono::high_resolution_clock::now();
-                tree.DirectionalTopKQueryRTree(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
-                //tree.DirectionalTopKQueryRTreeRough(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
+                //tree.DirectionalTopKQueryRTree(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
+                tree.DirectionalTopKQueryRTreeRough(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
                 //tree.DirectionalTopKQueryRTreeMixed(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
                 auto endTimeDirRT = std::chrono::high_resolution_clock::now();
                 auto durationDirRT = std::chrono::duration_cast<std::chrono::microseconds>(

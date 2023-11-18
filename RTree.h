@@ -21,6 +21,7 @@
 
 #define BETA 0.66
 #define DIM 2
+//#define PRINT_RESULTS
 #define MINIMIZATION 0 // 0 for exact minimization, 1 for optimized
 
 #define ASSERT assert // RTree uses ASSERT( condition )
@@ -1730,12 +1731,11 @@ struct OptProblemData {
 };
 
 std::vector<double> computePreferenceLine(const std::vector<double> &query) {
-    int len = query.size();
-    std::vector<double> prefLine(len);
+    std::vector<double> prefLine(DIM);
     double sum = 0.0;
     int i;
 
-    for (i = 0; i < len; i++) {
+    for (i = 0; i < DIM; i++) {
         if(query[i] == 0){
             prefLine[i] = 1/0.001;
         } else {
@@ -1744,7 +1744,7 @@ std::vector<double> computePreferenceLine(const std::vector<double> &query) {
         sum += prefLine[i];
     }
 
-    for (i = 0; i < len; i++) {
+    for (i = 0; i < DIM; i++) {
         prefLine[i] = prefLine[i] / sum;
     }
 
@@ -1778,15 +1778,12 @@ double computeScoreLin(double* vertex1, std::vector<double> query) {
 
 double dist_line_point(const double *point, const std::vector<double>& preferenceLine, double den) {
     double dist = 0.0;
-    int len = preferenceLine.size();
 
-    for (int i = 0; i < len; i++) {
+    for (int i = 0; i < DIM; i++) {
         double num = 0.0;
-        //double den = 0.0;
 
-        for (int j = 0; j < len; j++) {
+        for (int j = 0; j < DIM; j++) {
             num += preferenceLine[j] * point[j];
-            //den += preferenceLine[j] * preferenceLine[j];
         }
 
         double d = point[i] - (preferenceLine[i] * num / den);
@@ -1845,7 +1842,7 @@ double computeDenFromPrefLine(std::vector<double> prefLine){
 
 double computeScoreDir(double* vertex1, std::vector<double> query, std::vector<double> prefLine, double den) {
     double score = 0;
-    for(int i = 0; i < query.size(); i++){
+    for(int i = 0; i < DIM; i++){
         score += vertex1[i] * query[i];
     }
     score = BETA * score + (1 - BETA) * dist_line_point(vertex1, prefLine, den);
@@ -1854,7 +1851,7 @@ double computeScoreDir(double* vertex1, std::vector<double> query, std::vector<d
 
 double computeMinScoreLin(double* vertex1, std::vector<double> query) {
     double score = 0;
-    for(int i = 0; i < query.size(); i++){
+    for(int i = 0; i < DIM; i++){
         score += vertex1[i] * query[i];
     }
     return score;
@@ -1890,12 +1887,12 @@ double quadratic_minimization_exact(double* vertex1, double* vertex2, std::vecto
         ub[i] = vertex2[i];
     }
 
-    /*double query[DIM];
-    for(int i = 0; i < DIM; i++) {
+    double query[DIM];
+    /*for(int i = 0; i < DIM; i++) {
         query[i] = queryVec[i];
-    }
-     */
-    double *query = queryVec.data();
+    }*/
+
+    //double *query = queryVec.data();
     // Copy elements from vector to array
     std::copy(queryVec.begin(), queryVec.end(), query);
 
@@ -2125,20 +2122,8 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
     {
         nodeWithScore.node = m_root->m_branch[i].m_child;
         totalNonLinearProblemsSolved++;
-        switch(MINIMIZATION) {
-            case(0):
-                nodeWithScore.score = quadratic_minimization_exact(m_root->m_branch[i].m_rect.m_min,
+        nodeWithScore.score = quadratic_minimization_exact(m_root->m_branch[i].m_rect.m_min,
                                                                    m_root->m_branch[i].m_rect.m_max, query, prefLine.data(), den);
-                break;
-            case(1):
-                nodeWithScore.score = quadratic_minimization_opt(m_root->m_branch[i].m_rect.m_min,
-                                                                 m_root->m_branch[i].m_rect.m_max, query);
-                break;
-            default:
-                nodeWithScore.score = quadratic_minimization_exact(m_root->m_branch[i].m_rect.m_min,
-                                                                   m_root->m_branch[i].m_rect.m_max, query, prefLine.data(), den);
-                break;
-        }
         toVisit.push(nodeWithScore);
     }
 
@@ -2157,10 +2142,14 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
         contBox++;
         double temp = resultList.top().score;
         if(a_node.score > temp){
-            /*for(int i = 0; i < k; i++){
+            #ifdef PRINT_RESULTS
+            std::cout << "top "<< k << "\n" << std::endl;
+
+            for(int i = 0; i < k; i++){
                 std::cout << i << " resultList score: " << resultList.top().score << std::endl;
                 resultList.pop();
-            }*/
+            }
+            #endif
             *box += contBox;
             *leaves += contLeaf;
             *point += contPoint;
@@ -2189,20 +2178,8 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
             for(int index=0; index < a_node.node->m_count; index++)
             {
                 totalNonLinearProblemsSolved++;
-                switch(MINIMIZATION) {
-                    case(0):
-                        current_score = quadratic_minimization_exact(a_node.node->m_branch[index].m_rect.m_min,
-                                                                     a_node.node->m_branch[index].m_rect.m_max, query, prefLine.data(), den);
-                        break;
-                    case(1):
-                        current_score = quadratic_minimization_opt(a_node.node->m_branch[index].m_rect.m_min,
-                                                                   a_node.node->m_branch[index].m_rect.m_max, query);
-                        break;
-                    default:
-                        current_score = quadratic_minimization_exact(a_node.node->m_branch[index].m_rect.m_min,
-                                                                     a_node.node->m_branch[index].m_rect.m_max, query, prefLine.data(), den);
-                        break;
-                }
+                current_score = quadratic_minimization_exact(a_node.node->m_branch[index].m_rect.m_min,
+                                                             a_node.node->m_branch[index].m_rect.m_max, query, prefLine.data(), den);
                 if(current_score < resultList.top().score)  {
                     nodeWithScore.node = a_node.node->m_branch[index].m_child;
                     nodeWithScore.score = current_score;
@@ -2278,6 +2255,15 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
             *leaves += contLeaf;
             *point += contPoint;
 
+            #ifdef PRINT_RESULTS
+            std::cout << "top "<< k << "\n" << std::endl;
+
+            for(int i = 0; i < k; i++){
+                std::cout << i << " resultList score: " << resultList.top().score << std::endl;
+                resultList.pop();
+            }
+            #endif
+
             return resultList;
         }
         if(a_node.node->IsLeaf())
@@ -2301,7 +2287,7 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
             // This is an internal node in the tree
             for(int index=0; index < a_node.node->m_count; index++)
             {
-                current_score = computeMinScoreLin(a_node.node->m_branch[index].m_rect.m_min, query);
+                current_score = computeMinScoreLin(a_node.node->m_branch[index].m_rect.m_min, query)*BETA;
                 if(current_score < resultList.top().score)  {
                     nodeWithScore.node = a_node.node->m_branch[index].m_child;
                     nodeWithScore.score = current_score;

@@ -22,6 +22,7 @@
 #define BETA 0.66
 #define DIM 2
 //#define PRINT_RESULTS
+//#define MEASURE_TIME
 #define MINIMIZATION 0 // 0 for exact minimization, 1 for optimized
 
 #define ASSERT assert // RTree uses ASSERT( condition )
@@ -32,8 +33,24 @@
   #define Max std::max
 #endif //Max
 
+/* GLOBAL VARIABLES TO TEST PERFORMANCE */
 int totalNonLinearProblemsSolved = 0;
 double totalTimeNonLinearProblemsExecution = 0;
+
+int totalLinearScoresComputed = 0;
+double totalTimeLinearScoresComputation = 0;
+
+int totalDirectionalScoresComputed = 0;
+double totalTimeDirectionalScoresComputation = 0;
+
+int totalLinearBoundsComputed = 0;
+double totalTimeLinearBoundsComputation = 0;
+
+int totalLinearScoresComputedForDirectional = 0;
+double totalTimeLinearScoresComputationForDirectional = 0;
+
+int totalLinearBoundsComputedForDirectional = 0;
+double totalTimeLinearBoundsComputationForDirectional = 0;
 
 //
 // RTree.h
@@ -1768,14 +1785,6 @@ bool intersects(double* vertex_low, double* vertex_high, std::vector<double> pre
     return max <= min;
 }
 
-double computeScoreLin(double* vertex1, std::vector<double> query) {
-    double score = 0;
-    for(int i = 0; i < query.size(); i++){
-        score += vertex1[i] * query[i];
-    }
-    return score;
-}
-
 double dist_line_point(const double *point, const std::vector<double>& preferenceLine, double den) {
     double dist = 0.0;
 
@@ -1841,19 +1850,103 @@ double computeDenFromPrefLine(std::vector<double> prefLine){
 }
 
 double computeScoreDir(double* vertex1, std::vector<double> query, std::vector<double> prefLine, double den) {
+    #ifdef MEASURE_TIME
+        auto startTimeDirScoreResolution = std::chrono::high_resolution_clock::now();
+        totalDirectionalScoresComputed++;
+    #endif
+
     double score = 0;
     for(int i = 0; i < DIM; i++){
         score += vertex1[i] * query[i];
     }
     score = BETA * score + (1 - BETA) * dist_line_point(vertex1, prefLine, den);
+
+    #ifdef MEASURE_TIME
+        auto endTimeDirScoreResolution = std::chrono::high_resolution_clock::now();
+        auto durationDirScoreResolution = std::chrono::duration_cast<std::chrono::nanoseconds>(endTimeDirScoreResolution - startTimeDirScoreResolution);
+        totalTimeDirectionalScoresComputation += durationDirScoreResolution.count();
+    #endif
+
     return score;
 }
 
 double computeMinScoreLin(double* vertex1, std::vector<double> query) {
+    #ifdef MEASURE_TIME
+        auto startTimeLinScoreResolution = std::chrono::high_resolution_clock::now();
+        totalLinearBoundsComputed++;
+    #endif
+
     double score = 0;
     for(int i = 0; i < DIM; i++){
         score += vertex1[i] * query[i];
     }
+
+    #ifdef MEASURE_TIME
+        auto endTimeLinScoreResolution = std::chrono::high_resolution_clock::now();
+        auto durationLinScoreResolution = std::chrono::duration_cast<std::chrono::nanoseconds>(endTimeLinScoreResolution - startTimeLinScoreResolution);
+        totalTimeLinearBoundsComputation += durationLinScoreResolution.count();
+    #endif
+
+    return score;
+}
+
+double computeScoreLin(double* vertex1, std::vector<double> query) {
+    #ifdef MEASURE_TIME
+        auto startTimeLinScoreResolution = std::chrono::high_resolution_clock::now();
+        totalLinearScoresComputed++;
+    #endif
+
+    double score = 0;
+    for(int i = 0; i < DIM; i++){
+        score += vertex1[i] * query[i];
+    }
+
+    #ifdef MEASURE_TIME
+        auto endTimeLinScoreResolution = std::chrono::high_resolution_clock::now();
+        auto durationLinScoreResolution = std::chrono::duration_cast<std::chrono::nanoseconds>(endTimeLinScoreResolution - startTimeLinScoreResolution);
+        totalTimeLinearScoresComputation += durationLinScoreResolution.count();
+    #endif
+
+    return score;
+}
+
+double computeMinScoreLinForDirectional(double* vertex1, std::vector<double> query) {
+    #ifdef MEASURE_TIME
+        auto startTimeLinScoreResolution = std::chrono::high_resolution_clock::now();
+        totalLinearBoundsComputedForDirectional++;
+    #endif
+
+    double score = 0;
+    for(int i = 0; i < DIM; i++){
+        score += vertex1[i] * query[i];
+    }
+
+    #ifdef MEASURE_TIME
+        auto endTimeLinScoreResolution = std::chrono::high_resolution_clock::now();
+        auto durationLinScoreResolution = std::chrono::duration_cast<std::chrono::nanoseconds>(endTimeLinScoreResolution - startTimeLinScoreResolution);
+        totalTimeLinearBoundsComputationForDirectional += durationLinScoreResolution.count();
+    #endif
+
+    return score;
+}
+
+double computeScoreLinForDirectional(double* vertex1, std::vector<double> query) {
+    #ifdef MEASURE_TIME
+        auto startTimeLinScoreResolution = std::chrono::high_resolution_clock::now();
+        totalLinearScoresComputedForDirectional++;
+    #endif
+
+    double score = 0;
+    for(int i = 0; i < DIM; i++){
+        score += vertex1[i] * query[i];
+    }
+
+    #ifdef MEASURE_TIME
+        auto endTimeLinScoreResolution = std::chrono::high_resolution_clock::now();
+        auto durationLinScoreResolution = std::chrono::duration_cast<std::chrono::nanoseconds>(endTimeLinScoreResolution - startTimeLinScoreResolution);
+    totalTimeLinearScoresComputationForDirectional += durationLinScoreResolution.count();
+    #endif
+
     return score;
 }
 
@@ -1879,7 +1972,9 @@ double costFunction_exact(unsigned n, const double *x, double *grad, void *data)
 
 double quadratic_minimization_exact(double* vertex1, double* vertex2, std::vector<double> queryVec, double* prefLine, double den) {
 
+    #ifdef MEASURE_TIME
     auto startTimeProblemResolution = std::chrono::high_resolution_clock::now();
+    #endif
     double lb[DIM];
     double ub[DIM];
     for (int i = 0; i < DIM; i++) {
@@ -1919,9 +2014,11 @@ double quadratic_minimization_exact(double* vertex1, double* vertex2, std::vecto
     //Vertex 2 is the initial guess
     nlopt_result res=nlopt_optimize(opt, lb,&minf);
 
+    #ifdef MEASURE_TIME
     auto endTimeProblemResolution = std::chrono::high_resolution_clock::now();
-    auto durationProblemResolution = std::chrono::duration_cast<std::chrono::microseconds>(endTimeProblemResolution - startTimeProblemResolution);
+    auto durationProblemResolution = std::chrono::duration_cast<std::chrono::nanoseconds>(endTimeProblemResolution - startTimeProblemResolution);
     totalTimeNonLinearProblemsExecution += durationProblemResolution.count();
+    #endif
 
     return minf;
 }
@@ -2121,7 +2218,9 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
     for(int i = 0; i < m_root->m_count; i++)
     {
         nodeWithScore.node = m_root->m_branch[i].m_child;
+        #ifdef MEASURE_TIME
         totalNonLinearProblemsSolved++;
+        #endif
         nodeWithScore.score = quadratic_minimization_exact(m_root->m_branch[i].m_rect.m_min,
                                                                    m_root->m_branch[i].m_rect.m_max, query, prefLine.data(), den);
         toVisit.push(nodeWithScore);
@@ -2177,7 +2276,9 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
             // This is an internal node in the tree
             for(int index=0; index < a_node.node->m_count; index++)
             {
+                #ifdef MEASURE_TIME
                 totalNonLinearProblemsSolved++;
+                #endif
                 current_score = quadratic_minimization_exact(a_node.node->m_branch[index].m_rect.m_min,
                                                              a_node.node->m_branch[index].m_rect.m_max, query, prefLine.data(), den);
                 if(current_score < resultList.top().score)  {
@@ -2229,7 +2330,7 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
     for(int i = 0; i < m_root->m_count; i++)
     {
         nodeWithScore.node = m_root->m_branch[i].m_child;
-        nodeWithScore.score = computeMinScoreLin(m_root->m_branch[i].m_rect.m_min, query)*BETA;
+        nodeWithScore.score = computeMinScoreLinForDirectional(m_root->m_branch[i].m_rect.m_min, query) * BETA;
         toVisit.push(nodeWithScore);
     }
 
@@ -2287,7 +2388,8 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
             // This is an internal node in the tree
             for(int index=0; index < a_node.node->m_count; index++)
             {
-                current_score = computeMinScoreLin(a_node.node->m_branch[index].m_rect.m_min, query)*BETA;
+                current_score =
+                        computeMinScoreLinForDirectional(a_node.node->m_branch[index].m_rect.m_min, query) * BETA;
                 if(current_score < resultList.top().score)  {
                     nodeWithScore.node = a_node.node->m_branch[index].m_child;
                     nodeWithScore.score = current_score;
@@ -2345,10 +2447,12 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
 
         if(intersects(m_root->m_branch[i].m_rect.m_min,
                       m_root->m_branch[i].m_rect.m_max, prefLine)){
-            nodeWithScore.score = computeMinScoreLin(m_root->m_branch[i].m_rect.m_min, query)*BETA;
+            nodeWithScore.score = computeMinScoreLinForDirectional(m_root->m_branch[i].m_rect.m_min, query)*BETA;
         }
         else{
+            #ifdef MEASURE_TIME
             totalNonLinearProblemsSolved++;
+            #endif
             nodeWithScore.score = quadratic_minimization_exact(m_root->m_branch[i].m_rect.m_min,
                                                                m_root->m_branch[i].m_rect.m_max, query, prefLine.data(), den);
         }
@@ -2369,10 +2473,14 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
         contBox++;
         double temp = resultList.top().score;
         if(a_node.score > temp){
-            /*for(int i = 0; i < k; i++){
+            #ifdef PRINT_RESULTS
+            std::cout << "top "<< k << "\n" << std::endl;
+
+            for(int i = 0; i < k; i++){
                 std::cout << i << " resultList score: " << resultList.top().score << std::endl;
                 resultList.pop();
-            }*/
+            }
+            #endif
             *box += contBox;
             *leaves += contLeaf;
             *point += contPoint;
@@ -2402,10 +2510,12 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
             {
                 if(intersects(m_root->m_branch[index].m_rect.m_min,
                               m_root->m_branch[index].m_rect.m_max, prefLine)){
-                    current_score = computeMinScoreLin(m_root->m_branch[index].m_rect.m_min, query)*BETA;
+                    current_score = computeMinScoreLinForDirectional(m_root->m_branch[index].m_rect.m_min, query)*BETA;
                 }
                 else{
+                    #ifdef MEASURE_TIME
                     totalNonLinearProblemsSolved++;
+                    #endif
                     current_score = quadratic_minimization_exact(m_root->m_branch[index].m_rect.m_min,
                                                                        m_root->m_branch[index].m_rect.m_max, query, prefLine.data(), den);
                 }

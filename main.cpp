@@ -554,6 +554,22 @@ int main() {
     std::vector<double> totalNonLinearProblemsSolvedVect;
     std::vector<double> totalNonLinearProblemsSolvedTimeVect;
 
+    std::vector<double> totalLinearScoresComputedVect;
+    std::vector<double> totalTimeLinearScoresComputationVect;
+
+    std::vector<double> totalDirectionalScoresComputedVect;
+    std::vector<double> totalTimeDirectionalScoresComputationVect;
+
+    std::vector<double> totalLinearBoundsComputedVect;
+    std::vector<double> totalTimeLinearBoundsComputationVect;
+
+    std::vector<double> totalLinearScoresComputedForDirectionalVect;
+    std::vector<double> totalTimeLinearScoresComputationForDirectionalVect;
+
+    std::vector<double> totalLinearBoundsComputedForDirectionalVect;
+    std::vector<double> totalTimeLinearBoundsComputationForDirectionalVect;
+
+
     std::ifstream inputFile("../utilities/k.txt");
 
     std::cout << "\n - Results for dataset = " << filePath << std::endl;
@@ -575,8 +591,8 @@ int main() {
         numLeavesDir = 0;
         numPointDir = 0;
 
-        std::ifstream file("../queries/" + std::to_string(DIM) + "d.txt");
-        //std::ifstream file("../queries/test.txt");
+        //std::ifstream file("../queries/" + std::to_string(DIM) + "d.txt");
+        std::ifstream file("../queries/test.txt");
         //std::ifstream file("../balanced_queries/" + std::to_string(DIM) + "d.txt");
         //std::ifstream file("../unbalanced_queries/" + std::to_string(DIM) + "d.txt");
         numQ = 0;
@@ -642,12 +658,50 @@ int main() {
         numLeavesDirvect.push_back(static_cast<double>(numLeavesDir) / numQ);
         numPointDirvect.push_back(static_cast<double>(numPointDir) / numQ);
 
+        #ifdef MEASURE_TIME
+        /* NON LINEAR PROBLEMS */
         totalNonLinearProblemsSolvedVect.push_back(static_cast<double>(totalNonLinearProblemsSolved)/numQ);
         totalNonLinearProblemsSolvedTimeVect.push_back(static_cast<double>(totalTimeNonLinearProblemsExecution) /numQ);
-        //RESETTARE totalNonLinearProblemsSolved; e tempo
+        //RESET totalNonLinearProblemsSolved and time
         totalNonLinearProblemsSolved = 0;
         totalTimeNonLinearProblemsExecution = 0;
 
+        /* LINEAR SCORES (LINEAR ONLY)*/
+        totalLinearScoresComputedVect.push_back(static_cast<double>(totalLinearScoresComputed)/numQ);
+        totalTimeLinearScoresComputationVect.push_back(static_cast<double>(totalTimeLinearScoresComputation)/numQ);
+
+        totalLinearScoresComputed = 0;
+        totalTimeLinearScoresComputation = 0;
+
+        /* DIRECTIONAL SCORES */
+        totalDirectionalScoresComputedVect.push_back(static_cast<double>(totalDirectionalScoresComputed)/numQ);
+        totalTimeDirectionalScoresComputationVect.push_back(static_cast<double>(totalTimeDirectionalScoresComputation)/numQ);
+
+        totalDirectionalScoresComputed = 0;
+        totalTimeDirectionalScoresComputation = 0;
+
+        /* LINEAR BOUNDS (LINEAR ONLY) */
+        totalLinearBoundsComputedVect.push_back(static_cast<double>(totalLinearBoundsComputed)/numQ);
+        totalTimeLinearBoundsComputationVect.push_back(static_cast<double>(totalTimeLinearBoundsComputation)/numQ);
+
+        totalLinearBoundsComputed = 0;
+        totalTimeLinearBoundsComputation = 0;
+
+        /* LINEAR SCORES (FOR DIRECTIONAL) */
+        totalLinearScoresComputedForDirectionalVect.push_back(static_cast<double>(totalLinearScoresComputedForDirectional)/numQ);
+        totalTimeLinearScoresComputationForDirectionalVect.push_back(static_cast<double>(totalTimeLinearScoresComputationForDirectional)/numQ);
+
+        totalLinearScoresComputedForDirectional = 0;
+        totalTimeLinearScoresComputationForDirectional = 0;
+
+        /* LINEAR BOUNDS (FOR DIRECTIONAL) */
+        totalLinearBoundsComputedForDirectionalVect.push_back(static_cast<double>(totalLinearBoundsComputedForDirectional)/numQ);
+        totalTimeLinearBoundsComputationForDirectionalVect.push_back(static_cast<double>(totalTimeLinearBoundsComputationForDirectional)/numQ);
+
+        totalLinearBoundsComputedForDirectional = 0;
+        totalTimeLinearBoundsComputationForDirectional = 0;
+
+        #endif
     }
 
     /*
@@ -684,7 +738,7 @@ int main() {
     //Print to have a useful output for the Excel
     std::cout << "\n - Results for Rtree Execution" << std::endl;
 
-    std::cout << "\nLinear Rtree time:" << std::endl;
+    std::cout << "\nLinear Rtree time [us]:" << std::endl;
     for (const auto &element: timeLinRTvect) {
         std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
         std::cout << element << std::endl;
@@ -706,7 +760,32 @@ int main() {
         std::cout << element << std::endl;
     }
 
-    std::cout << "\nDirectional Rtree time:" << std::endl;
+    #ifdef MEASURE_TIME
+    std::cout << "\nLinear Rtree Bounds Computed:" << std::endl;
+    for (const auto &element: totalLinearBoundsComputedVect) {
+        std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
+        std::cout << element << std::endl;
+    }
+    std::cout << "\nLinear Rtree Bounds Computation Time: [us]" << std::endl;
+    for (const auto &element: totalTimeLinearBoundsComputationVect) {
+        std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
+        std::cout << element/1000 << std::endl; //raw data is in ns and needs to be printed in us
+    }
+
+    std::cout << "\nLinear Rtree Scores:" << std::endl;
+    for (const auto &element: totalLinearScoresComputedVect) {
+        std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
+        std::cout << element << std::endl;
+    }
+    std::cout << "\nLinear Rtree Scores Computation Time: [us]" << std::endl;
+    for (const auto &element: totalTimeLinearScoresComputationVect) {
+        std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
+        std::cout << element/1000 << std::endl; //raw data is in ns and needs to be printed in us
+    }
+
+    #endif
+
+    std::cout << "\nDirectional Rtree time [us]:" << std::endl;
     for (const auto &element: timeDirRTvect) {
         std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
         std::cout << element << std::endl;
@@ -728,16 +807,51 @@ int main() {
         std::cout << element << std::endl;
     }
 
+    #ifdef MEASURE_TIME
     std::cout << "\nDirectional Rtree Problems:" << std::endl;
     for (const auto &element: totalNonLinearProblemsSolvedVect) {
         std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
         std::cout << element << std::endl;
     }
-    std::cout << "\nDirectional Rtree ProblemTime:" << std::endl;
+    std::cout << "\nDirectional Rtree ProblemTime [us]:" << std::endl;
     for (const auto &element: totalNonLinearProblemsSolvedTimeVect) {
+        std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
+        std::cout << element/1000 << std::endl; // raw data is in ns and needs to be printed in us
+    }
+
+    std::cout << "\nDirectional Rtree Scores:" << std::endl;
+    for (const auto &element: totalDirectionalScoresComputedVect) {
         std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
         std::cout << element << std::endl;
     }
+    std::cout << "\nDirectional Rtree Scores Computation Time: [us]" << std::endl;
+    for (const auto &element: totalTimeDirectionalScoresComputationVect) {
+        std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
+        std::cout << element/1000 << std::endl; //raw data is in ns and needs to be printed in us
+    }
+
+    std::cout << "\nLinear Rtree Scores Computed For Directional:" << std::endl;
+    for (const auto &element: totalLinearScoresComputedForDirectionalVect) {
+        std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
+        std::cout << element << std::endl;
+    }
+    std::cout << "\nLinear Rtree Scores Computed For Directional Computation Time: [us]" << std::endl;
+    for (const auto &element: totalTimeLinearScoresComputationForDirectionalVect) {
+        std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
+        std::cout << element/1000 << std::endl; //raw data is in ns and needs to be printed in us
+    }
+
+    std::cout << "\nLinear Rtree Bounds Computed For Directional:" << std::endl;
+    for (const auto &element: totalLinearBoundsComputedForDirectionalVect) {
+        std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
+        std::cout << element << std::endl;
+    }
+    std::cout << "\nLinear Rtree Bounds Computed For Directional Computation Time: [us]" << std::endl;
+    for (const auto &element: totalTimeLinearBoundsComputationForDirectionalVect) {
+        std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
+        std::cout << element/1000 << std::endl; //raw data is in ns and needs to be printed in us
+    }
+    #endif
 
     return 0;
 }

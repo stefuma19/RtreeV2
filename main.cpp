@@ -67,7 +67,6 @@ struct NodeWithScore {
 };
 
 
-
 bool compareLastColumn(const MyTuple &tuple1, const MyTuple &tuple2);
 
 bool compareLastColumn(const MyTuple &tuple1, const MyTuple &tuple2) {
@@ -474,10 +473,12 @@ int main() {
     MyTree tree;
 
     //std::string filePath = "../datasets/cor_neg/2D/cor_neg_1M_2.csv";
-    std::string filePath = "../datasets/cor_neg/2D/cor_neg_100k_2.csv";
-    //std::string filePath = "../datasets/cor_neg/2D/cor_neg_1M_2.csv";
+    //std::string filePath = "../datasets/cor_neg/2D/cor_neg_100k_2.csv";
+    std::string filePath = "../datasets/cor_neg/2D/cor_neg_1M_2.csv";
     //std::string filePath = "../datasets/cor_neg/4D/cor_neg_1M_4.csv";
     //std::string filePath = "../datasets/household/household_cleaned.csv";
+
+    //std::string filePath = "../datasets/cor_neg_1M_2.csv";
 
 
     #ifndef ONLY_RTREE
@@ -831,5 +832,69 @@ int main() {
     }
     #endif
 
+    #ifdef MEASURE_TIME
+
+    // Store vectors in a vector of vectors as strings
+    std::vector<std::vector<std::string>> allVectors;
+    std::vector<std::string> firstRow;
+    firstRow.push_back("Linear Rtree time [us]");
+    firstRow.push_back("Linear Rtree numPoint");
+    firstRow.push_back("Linear Rtree numLeaves");
+    firstRow.push_back("Linear Rtree numBoxes");
+    firstRow.push_back("Linear Rtree Bounds Computed");
+    firstRow.push_back("Linear Rtree Bounds Computation Time: [us]");
+    firstRow.push_back("Linear Rtree Scores");
+    firstRow.push_back("Linear Rtree Scores Computation Time: [us]");
+    firstRow.push_back("Directional Rtree time [us]");
+    firstRow.push_back("Directional Rtree numPoint");
+    firstRow.push_back("Directional Rtree numLeaves");
+    firstRow.push_back("Directional Rtree numBoxes");
+    firstRow.push_back("Directional Rtree Problems");
+    firstRow.push_back("Directional Rtree ProblemTime [us]");
+    firstRow.push_back("Directional Rtree Scores");
+    firstRow.push_back("Directional Rtree Scores Computation Time: [us]");
+    firstRow.push_back("Linear Rtree Scores Computed For Directional");
+    firstRow.push_back("Linear Rtree Scores Computed For Directional Computation Time: [us]");
+    firstRow.push_back("Linear Rtree Bounds Computed For Directional");
+    firstRow.push_back("Linear Rtree Bounds Computed For Directional Computation Time: [us]");
+    allVectors.push_back(firstRow);
+    for (size_t i = 0; i < totalTimeLinearBoundsComputationForDirectionalVect.size(); ++i) {
+        std::vector<std::string> row;
+        row.push_back(std::to_string(timeLinRTvect[i]));
+        row.push_back(std::to_string(numPointLinvect[i]));
+        row.push_back(std::to_string(numLeavesLinvect[i]));
+        row.push_back(std::to_string(numBoxLinvect[i]));
+        row.push_back(std::to_string(totalLinearBoundsComputedVect[i]));
+        row.push_back(std::to_string(totalTimeLinearBoundsComputationVect[i]/1000));
+        row.push_back(std::to_string(totalLinearScoresComputedVect[i]));
+        row.push_back(std::to_string(totalTimeLinearScoresComputationVect[i]/1000));
+        row.push_back(std::to_string(timeDirRTvect[i]));
+        row.push_back(std::to_string(numPointDirvect[i]));
+        row.push_back(std::to_string(numLeavesDirvect[i]));
+        row.push_back(std::to_string(numBoxDirvect[i]));
+        row.push_back(std::to_string(totalNonLinearProblemsSolvedVect[i]));
+        row.push_back(std::to_string(totalNonLinearProblemsSolvedTimeVect[i]/1000));
+        row.push_back(std::to_string(totalDirectionalScoresComputedVect[i]));
+        row.push_back(std::to_string(totalTimeDirectionalScoresComputationVect[i]/1000));
+        row.push_back(std::to_string(totalLinearScoresComputedForDirectionalVect[i]));
+        row.push_back(std::to_string(totalTimeLinearScoresComputationForDirectionalVect[i]/1000));
+        row.push_back(std::to_string(totalLinearBoundsComputedForDirectionalVect[i]));
+        row.push_back(std::to_string(totalTimeLinearBoundsComputationForDirectionalVect[i]/1000));
+        allVectors.push_back(row);
+    }
+
+    // Printing vectors as CSV to the console
+    for (const auto& row : allVectors) {
+        for (size_t i = 0; i < row.size(); ++i) {
+            std::cout << row[i];
+
+            if (i != row.size() - 1) {
+                std::cout << ",";
+            }
+        }
+        std::cout << "\n";
+    }
+
+    #endif
     return 0;
 }

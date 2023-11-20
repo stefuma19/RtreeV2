@@ -22,7 +22,7 @@
 #define BETA 0.66
 #define DIM 2
 //#define PRINT_RESULTS
-//#define MEASURE_TIME
+#define MEASURE_TIME
 #define MINIMIZATION 0 // 0 for exact minimization, 1 for optimized
 
 #define ASSERT assert // RTree uses ASSERT( condition )
@@ -1785,6 +1785,26 @@ bool intersects(double* vertex_low, double* vertex_high, std::vector<double> pre
     return max <= min;
 }
 
+bool isIntersection(double minCorner[], double maxCorner[], std::vector<double> lineDirection) {
+    double tMin = -std::numeric_limits<double>::infinity();
+    double tMax = std::numeric_limits<double>::infinity();
+
+    for (int i = 0; i < DIM; ++i) {
+        if (lineDirection[i] != 0) {
+            double t1 = minCorner[i] / lineDirection[i];
+            double t2 = maxCorner[i] / lineDirection[i];
+
+            tMin = std::fmax(tMin, std::fmin(t1, t2));
+            tMax = std::fmin(tMax, std::fmax(t1, t2));
+        } else if (minCorner[i] > 0 || maxCorner[i] < 0) {
+            // The line is parallel to the axis and outside the box
+            return false;
+        }
+    }
+
+    return tMax >= tMin;
+}
+
 double dist_line_point(const double *point, const std::vector<double>& preferenceLine, double den) {
     double dist = 0.0;
 
@@ -2431,6 +2451,7 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
     int contBox = 0;
     int contLeaf = 0;
     int contPoint = 0;
+    //int totalIntersections = 0;
 
     std::priority_queue<BranchWithScore> resultList;
 
@@ -2445,9 +2466,10 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
     {
         nodeWithScore.node = m_root->m_branch[i].m_child;
 
-        if(intersects(m_root->m_branch[i].m_rect.m_min,
+        if(isIntersection(m_root->m_branch[i].m_rect.m_min,
                       m_root->m_branch[i].m_rect.m_max, prefLine)){
-            nodeWithScore.score = computeMinScoreLinForDirectional(m_root->m_branch[i].m_rect.m_min, query)*BETA;
+            //totalIntersections++;
+            nodeWithScore.score = computeMinScoreLinForDirectional(m_root->m_branch[i].m_rect.m_min, query) * BETA;
         }
         else{
             #ifdef MEASURE_TIME
@@ -2485,6 +2507,8 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
             *leaves += contLeaf;
             *point += contPoint;
 
+            //printf("totalIntersections (early): %d\n", totalIntersections);
+
             return resultList;
         }
         if(a_node.node->IsLeaf())
@@ -2508,16 +2532,18 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
             // This is an internal node in the tree
             for(int index=0; index < a_node.node->m_count; index++)
             {
-                if(intersects(m_root->m_branch[index].m_rect.m_min,
-                              m_root->m_branch[index].m_rect.m_max, prefLine)){
-                    current_score = computeMinScoreLinForDirectional(m_root->m_branch[index].m_rect.m_min, query)*BETA;
+                if(isIntersection(a_node.node->m_branch[index].m_rect.m_min,
+                              a_node.node->m_branch[index].m_rect.m_max, prefLine)){
+                    //totalIntersections++;
+                    current_score =
+                            computeMinScoreLinForDirectional(a_node.node->m_branch[index].m_rect.m_min, query) * BETA;
                 }
                 else{
                     #ifdef MEASURE_TIME
                     totalNonLinearProblemsSolved++;
                     #endif
-                    current_score = quadratic_minimization_exact(m_root->m_branch[index].m_rect.m_min,
-                                                                       m_root->m_branch[index].m_rect.m_max, query, prefLine.data(), den);
+                    current_score = quadratic_minimization_exact(a_node.node->m_branch[index].m_rect.m_min,
+                                                                       a_node.node->m_branch[index].m_rect.m_max, query, prefLine.data(), den);
                 }
 
                 if(current_score < resultList.top().score)  {
@@ -2533,6 +2559,16 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
     *leaves += contLeaf;
     *point += contPoint;
 
+#ifdef PRINT_RESULTS
+    std::cout << "top "<< k << "\n" << std::endl;
+
+            for(int i = 0; i < k; i++){
+                std::cout << i << " resultList score: " << resultList.top().score << std::endl;
+                resultList.pop();
+            }
+#endif
+
+    //printf("totalIntersections: %d\n", totalIntersections);
     return resultList;
 }
 

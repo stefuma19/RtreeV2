@@ -389,6 +389,14 @@ void sequentialDirectionalWithVector(std::vector<MyTuple> points, std::vector<do
     auto durationDirSeq = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeDirSeq - startTimeDirSeq);
     std::cout << "[K = " << k << " ] - Directional Sequential: " << durationDirSeq.count() << " ms" << std::endl;
 
+#ifdef PRINT_RESULTS
+    for (i = 0; i < k; i++) {
+        std::cout << heap.top().score << std::endl;
+        heap.pop();
+    }
+#endif
+
+
 }
 
 /*
@@ -466,13 +474,14 @@ int main() {
     MyTree tree;
 
     //std::string filePath = "../datasets/cor_neg/2D/cor_neg_1M_2.csv";
+    std::string filePath = "../datasets/cor_neg/2D/cor_neg_100k_2.csv";
     //std::string filePath = "../datasets/cor_neg/2D/cor_neg_1M_2.csv";
-    std::string filePath = "../datasets/cor_neg/2D/cor_neg_1M_2.csv";
+    //std::string filePath = "../datasets/cor_neg/4D/cor_neg_1M_4.csv";
     //std::string filePath = "../datasets/household/household_cleaned.csv";
 
 
     #ifndef ONLY_RTREE
-    std::vector<double> queryIniziale = {0.33, 0.33, 0.34, 0};
+    std::vector<double> queryIniziale = {0.2, 0.8};
     std::vector<int> k_values = {1, 5, 10, 50, 100, 500};
 
     std::vector<MyTuple> data;  // Vector to store the vectors of values
@@ -591,8 +600,8 @@ int main() {
         numLeavesDir = 0;
         numPointDir = 0;
 
-        //std::ifstream file("../queries/" + std::to_string(DIM) + "d.txt");
-        std::ifstream file("../queries/test.txt");
+        //std::ifstream file("../queries/test.txt");
+        std::ifstream file("../queries/" + std::to_string(DIM) + "d.txt");
         //std::ifstream file("../balanced_queries/" + std::to_string(DIM) + "d.txt");
         //std::ifstream file("../unbalanced_queries/" + std::to_string(DIM) + "d.txt");
         numQ = 0;
@@ -621,8 +630,8 @@ int main() {
 
                 //std::cout << "----------------DIRECTIONAL RTREE----------------" << std::endl;
                 auto startTimeDirRT = std::chrono::high_resolution_clock::now();
-                //tree.DirectionalTopKQueryRTree(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
-                tree.DirectionalTopKQueryRTreeRough(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
+                tree.DirectionalTopKQueryRTree(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
+                //tree.DirectionalTopKQueryRTreeRough(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
                 //tree.DirectionalTopKQueryRTreeMixed(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
                 auto endTimeDirRT = std::chrono::high_resolution_clock::now();
                 auto durationDirRT = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -703,37 +712,6 @@ int main() {
 
         #endif
     }
-
-    /*
-    //std::cout << "----------------LINEAR SEQUENTIAL----------------" << std::endl;
-    auto startTimeLinSeq = std::chrono::high_resolution_clock::now();
-
-    std::vector<MyTuple> tuplesLin = readCSVLin(filePath, query);
-    std::sort(tuplesLin.begin(), tuplesLin.end(), compareLastColumn);
-
-    auto endTimeLinSeq = std::chrono::high_resolution_clock::now();
-    auto durationLinSeq = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeLinSeq - startTimeLinSeq);
-
-
-    timeLinSeq += durationLinSeq.count();
-
-    //std::cout << "----------------DIRECTIONAL SEQUENTIAL----------------" << std::endl;
-    auto startTimeDirSeq = std::chrono::high_resolution_clock::now();
-
-    std::vector<MyTuple> tuplesDir = readCSVDir(filePath, query);
-    std::sort(tuplesDir.begin(), tuplesDir.end(), compareLastColumn);
-
-    auto endTimeDirSeq = std::chrono::high_resolution_clock::now();
-    auto durationDirSeq = std::chrono::duration_cast<std::chrono::milliseconds>(endTimeDirSeq - startTimeDirSeq);
-
-    timeDirSeq += durationDirSeq.count();
-
-    std::cout << "\n - Results for Sequential Execution" << std::endl;
-
-    std::cout << "\nExecution time LinSeq: " << timeLinSeq << " milliseconds." << std::endl;
-    std::cout << "Execution time DirSeq: " << timeDirSeq << " milliseconds." << std::endl;
-
-     */
 
     //Print to have a useful output for the Excel
     std::cout << "\n - Results for Rtree Execution" << std::endl;

@@ -23,7 +23,9 @@
 #define DIM 2
 //#define PRINT_RESULTS
 #define MEASURE_TIME
-#define MINIMIZATION 0 // 0 for exact minimization, 1 for optimized
+#define EAGER 0
+#define ROUGH 1
+#define TREE_METHOD EAGER // 0 for eager, 1 for rough
 
 #define ASSERT assert // RTree uses ASSERT( condition )
 #ifndef Min

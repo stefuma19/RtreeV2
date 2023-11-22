@@ -472,13 +472,8 @@ int main() {
     typedef RTree<ValueType, double, DIM, float, LEAF_CAPACITY> MyTree;
     MyTree tree;
 
-    //std::string filePath = "../datasets/cor_neg/2D/cor_neg_1M_2.csv";
-    //std::string filePath = "../datasets/cor_neg/2D/cor_neg_100k_2.csv";
     std::string filePath = "../datasets/cor_neg/2D/cor_neg_1M_2.csv";
-    //std::string filePath = "../datasets/cor_neg/4D/cor_neg_1M_4.csv";
-    //std::string filePath = "../datasets/household/household_cleaned.csv";
 
-    //std::string filePath = "../datasets/cor_neg_1M_2.csv";
 
 
     #ifndef ONLY_RTREE
@@ -561,6 +556,8 @@ int main() {
     std::vector<double> numPointDirvect;
     timeLinRTvect.reserve(9);
 
+    std::vector<int> k_values;
+
     std::vector<double> totalNonLinearProblemsSolvedVect;
     std::vector<double> totalNonLinearProblemsSolvedTimeVect;
 
@@ -580,7 +577,9 @@ int main() {
     std::vector<double> totalTimeLinearBoundsComputationForDirectionalVect;
 
 
-    std::ifstream inputFile("../utilities/k.txt");
+    //std::ifstream inputFile("../utilities/k.txt");
+    std::ifstream inputFile("../utilities/new_k.txt");
+    //std::ifstream inputFile("../utilities/k_10.txt");
 
     std::cout << "\n - Results for dataset = " << filePath << std::endl;
 
@@ -602,9 +601,9 @@ int main() {
         numPointDir = 0;
 
         //std::ifstream file("../queries/test.txt");
-        std::ifstream file("../queries/" + std::to_string(DIM) + "d.txt");
+        //std::ifstream file("../queries/" + std::to_string(DIM) + "d.txt");
         //std::ifstream file("../balanced_queries/" + std::to_string(DIM) + "d.txt");
-        //std::ifstream file("../unbalanced_queries/" + std::to_string(DIM) + "d.txt");
+        std::ifstream file("../unbalanced_queries/" + std::to_string(DIM) + "d.txt");
         numQ = 0;
 
         if (file.is_open()) {
@@ -631,8 +630,14 @@ int main() {
 
                 //std::cout << "----------------DIRECTIONAL RTREE----------------" << std::endl;
                 auto startTimeDirRT = std::chrono::high_resolution_clock::now();
+
+                #if TREE_METHOD == EAGER
                 tree.DirectionalTopKQueryRTree(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
-                //tree.DirectionalTopKQueryRTreeRough(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
+                #endif
+
+                #if TREE_METHOD == ROUGH
+                tree.DirectionalTopKQueryRTreeRough(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
+                #endif
                 //tree.DirectionalTopKQueryRTreeMixed(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
                 auto endTimeDirRT = std::chrono::high_resolution_clock::now();
                 auto durationDirRT = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -641,20 +646,6 @@ int main() {
                 timeDirRT += durationDirRT.count();
             }
         }
-
-        // Print to have a nice output
-        /*
-        std::cout << "\nExecution time LinRT: " << static_cast<double> (timeLinRT) / numQ << " microseconds." << std::endl;
-        std::cout << "Execution time DirRT: " << static_cast<double>(timeDirRT) / numQ << " microseconds." << std::endl;
-
-        std::cout << "\nAccesses to Box Linear: " << static_cast<double>(numBoxLin) / numQ << std::endl;
-        std::cout << "Accesses to Leaves Linear: " << static_cast<double>(numLeavesLin) / numQ << std::endl;
-        std::cout << "Accesses to Points Linear: " << static_cast<double>(numPointLin) / numQ << std::endl;
-
-        std::cout << "\nAccesses to Box Directional: " << static_cast<double>(numBoxDir) / numQ << std::endl;
-        std::cout << "Accesses to Leaves Directional: " << static_cast<double>(numLeavesDir) / numQ << std::endl;
-        std::cout << "Accesses to Points Directional: " << static_cast<double>(numPointDir) / numQ << std::endl;
-         */
 
         //Print to have a useful output for the Excel
         timeLinRTvect.push_back(static_cast<double> (timeLinRT) / numQ);
@@ -669,6 +660,9 @@ int main() {
         numPointDirvect.push_back(static_cast<double>(numPointDir) / numQ);
 
         #ifdef MEASURE_TIME
+
+        k_values.push_back(k);
+
         /* NON LINEAR PROBLEMS */
         totalNonLinearProblemsSolvedVect.push_back(static_cast<double>(totalNonLinearProblemsSolved)/numQ);
         totalNonLinearProblemsSolvedTimeVect.push_back(static_cast<double>(totalTimeNonLinearProblemsExecution) /numQ);
@@ -717,6 +711,7 @@ int main() {
     //Print to have a useful output for the Excel
     std::cout << "\n - Results for Rtree Execution" << std::endl;
 
+    /*
     std::cout << "\nLinear Rtree time [us]:" << std::endl;
     for (const auto &element: timeLinRTvect) {
         std::cout.imbue(std::locale(std::cout.getloc(), new punct_facet<char, ','>));
@@ -832,11 +827,20 @@ int main() {
     }
     #endif
 
+    */
+
     #ifdef MEASURE_TIME
 
     // Store vectors in a vector of vectors as strings
     std::vector<std::vector<std::string>> allVectors;
     std::vector<std::string> firstRow;
+
+    firstRow.push_back("n");
+    firstRow.push_back("d");
+    firstRow.push_back("k");
+    firstRow.push_back("Rtree boxes");
+    firstRow.push_back("Rtree leaves");
+    firstRow.push_back("Method");
     firstRow.push_back("Linear Rtree time [us]");
     firstRow.push_back("Linear Rtree numPoint");
     firstRow.push_back("Linear Rtree numLeaves");
@@ -853,13 +857,24 @@ int main() {
     firstRow.push_back("Directional Rtree ProblemTime [us]");
     firstRow.push_back("Directional Rtree Scores");
     firstRow.push_back("Directional Rtree Scores Computation Time: [us]");
-    firstRow.push_back("Linear Rtree Scores Computed For Directional");
-    firstRow.push_back("Linear Rtree Scores Computed For Directional Computation Time: [us]");
+    //firstRow.push_back("Linear Rtree Scores Computed For Directional");
+    //firstRow.push_back("Linear Rtree Scores Computed For Directional Computation Time: [us]");
     firstRow.push_back("Linear Rtree Bounds Computed For Directional");
     firstRow.push_back("Linear Rtree Bounds Computed For Directional Computation Time: [us]");
     allVectors.push_back(firstRow);
     for (size_t i = 0; i < totalTimeLinearBoundsComputationForDirectionalVect.size(); ++i) {
         std::vector<std::string> row;
+        row.push_back(std::to_string(numPoints));
+        row.push_back(std::to_string(DIM));
+        row.push_back(std::to_string(k_values[i]));
+        row.push_back(std::to_string(numNodes));
+        row.push_back(std::to_string(numLeaves));
+        #if TREE_METHOD == EAGER
+        row.push_back("Eager");
+        #endif
+        #if TREE_METHOD == ROUGH
+        row.push_back("Rough");
+        #endif
         row.push_back(std::to_string(timeLinRTvect[i]));
         row.push_back(std::to_string(numPointLinvect[i]));
         row.push_back(std::to_string(numLeavesLinvect[i]));
@@ -876,14 +891,15 @@ int main() {
         row.push_back(std::to_string(totalNonLinearProblemsSolvedTimeVect[i]/1000));
         row.push_back(std::to_string(totalDirectionalScoresComputedVect[i]));
         row.push_back(std::to_string(totalTimeDirectionalScoresComputationVect[i]/1000));
-        row.push_back(std::to_string(totalLinearScoresComputedForDirectionalVect[i]));
-        row.push_back(std::to_string(totalTimeLinearScoresComputationForDirectionalVect[i]/1000));
+        //row.push_back(std::to_string(totalLinearScoresComputedForDirectionalVect[i]));
+        //row.push_back(std::to_string(totalTimeLinearScoresComputationForDirectionalVect[i]/1000));
         row.push_back(std::to_string(totalLinearBoundsComputedForDirectionalVect[i]));
         row.push_back(std::to_string(totalTimeLinearBoundsComputationForDirectionalVect[i]/1000));
         allVectors.push_back(row);
     }
 
     // Printing vectors as CSV to the console
+    /*
     for (const auto& row : allVectors) {
         for (size_t i = 0; i < row.size(); ++i) {
             std::cout << row[i];
@@ -893,6 +909,31 @@ int main() {
             }
         }
         std::cout << "\n";
+    }
+     */
+
+    // Open a file for writing
+    std::ofstream outFile("../stats.csv");
+
+    // Check if the file is open
+    if (outFile.is_open()) {
+
+        for (const auto& row : allVectors) {
+            for (size_t t = 0; t < row.size(); ++t) {
+                outFile << row[t];
+
+                if (t != row.size() - 1) {
+                    outFile << ",";
+                }
+            }
+            outFile << "\n";
+        }
+
+        // Close the file
+        outFile.close();
+        std::cout << "File written successfully." << std::endl;
+    } else {
+        std::cerr << "Unable to open the file." << std::endl;
     }
 
     #endif

@@ -19,13 +19,13 @@
 #include <limits>
 #include <nlopt.h>
 
-#define BETA 0.66
-#define DIM 2
+#define BETA 0.66 //Beta value for the directional query
+#define DIM 2     //Dimensions of the dataset
 //#define PRINT_RESULTS
-#define MEASURE_TIME
+#define MEASURE_TIME //Uncomment to measure the time of the execution of the algorithm
 #define EAGER 0
-#define ROUGH 1
-#define TREE_METHOD EAGER // 0 for eager, 1 for rough
+#define LOOSE 1
+#define TREE_METHOD EAGER // 0 for eager, 1 for loose
 
 #define ASSERT assert // RTree uses ASSERT( condition )
 #ifndef Min
@@ -425,8 +425,8 @@ public:
   std::vector<Rect> ListTree() const;
   std::priority_queue<BranchWithScore> linearTopKQueryRTree(int k, std::vector<double> query, int* box, int* leaves, int* point);
   std::priority_queue<BranchWithScore> DirectionalTopKQueryRTree(int k, std::vector<double> query, int* box, int* leaves, int* point);
-  std::priority_queue<BranchWithScore> DirectionalTopKQueryRTreeRough(int k, std::vector<double> query, int* box, int* leaves, int* point);
-  std::priority_queue<BranchWithScore> DirectionalTopKQueryRTreeMixed(int k, std::vector<double> query, int* box, int* leaves, int* point);
+  std::priority_queue<BranchWithScore> DirectionalTopKQueryRTreeLoose(int k, std::vector<double> query, int* box, int* leaves, int* point);
+  //std::priority_queue<BranchWithScore> DirectionalTopKQueryRTreeMixed(int k, std::vector<double> query, int* box, int* leaves, int* point);
   void CountBoxesLeavesAndPoints(int* a_boxCount, int* a_leafCount, int* a_pointCount);
 };
 
@@ -2118,6 +2118,7 @@ double quadratic_minimization_opt(double* vertex1, double* vertex2, std::vector<
 
 
 
+// Performs a linear top-k query using the R-tree
 RTREE_TEMPLATE
 std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::linearTopKQueryRTree(int k, std::vector<double> query, int* box, int* leaves, int* point)
 {
@@ -2215,6 +2216,7 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::linearTopK
     return resultList;
 }
 
+// Performs a directional top-k query using the R-tree with the TIGHT method
 RTREE_TEMPLATE
 std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::DirectionalTopKQueryRTree(int k, std::vector<double> query, int* box, int* leaves, int* point)
 {
@@ -2327,8 +2329,9 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
     return resultList;
 }
 
+// Performs a directional top-k query using the R-tree with the LOOSE method
 RTREE_TEMPLATE
-std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::DirectionalTopKQueryRTreeRough(int k, std::vector<double> query, int* box, int* leaves, int* point)
+std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::DirectionalTopKQueryRTreeLoose(int k, std::vector<double> query, int* box, int* leaves, int* point)
 {
             ASSERT(m_root);
             ASSERT(m_root->m_level >= 0);
@@ -2437,6 +2440,8 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
     return resultList;
 }
 
+// Performs a directional top-k query using the R-tree with the MIXED method
+/*
 RTREE_TEMPLATE
 std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::DirectionalTopKQueryRTreeMixed(int k,
                                                                                                      std::vector<double> query,
@@ -2573,7 +2578,9 @@ std::priority_queue<typename RTREE_QUAL::BranchWithScore> RTREE_QUAL::Directiona
     //printf("totalIntersections: %d\n", totalIntersections);
     return resultList;
 }
+*/
 
+// Counts the number of boxes, leaves and points in the R-tree
 RTREE_TEMPLATE
 void RTREE_QUAL::CountBoxesLeavesAndPoints(int *box_total, int *leaves_total, int *points_total) {
 

@@ -14,16 +14,18 @@ typedef std::vector<double> MyTuple;
 
 //Helper class to replace decimal separator
 template<class charT, charT sep>
+
 class punct_facet : public std::numpunct<charT> {
 protected:
     charT do_decimal_point() const override { return sep; }
 };
 
 
-#define DIM 2
-#define ONLY_RTREE
-#define BETA 0.66
-#if DIM == 2
+#define DIM 2      //Dimensions of the dataset
+#define ONLY_RTREE //If defined, only the r-tree method is executed, the sequential ones are ignored
+#define BETA 0.66  //Beta value for the directional query
+
+#if DIM == 2       //Define the leaf capacity depending on the number of dimensions
 #define LEAF_CAPACITY 100
 #endif
 #if DIM == 3
@@ -138,11 +140,9 @@ double dist_line_point(const vector<double> &point, const vector<double> &prefLi
 
     for (int i = 0; i < DIM; i++) {
         double num = 0.0;
-        //double den = 0.0;
 
         for (int j = 0; j < DIM; j++) {
             num += prefLine[j] * point[j];
-            //den += query[j] * query[j];
         }
 
         double d = point[i] - (prefLine[i] * num / den);
@@ -153,83 +153,7 @@ double dist_line_point(const vector<double> &point, const vector<double> &prefLi
     return std::sqrt(dist);
 }
 
-/*
-std::vector<MyTuple> readCSVLin(const string &filename, std::vector<double> query) {
-    std::vector<MyTuple> data;  // Vector to store the vectors of values
-    double score;
-    int i;
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        std::cerr << "Error opening file: " << filename << std::endl;
-        return data;  // Return an empty vector
-    }
-    std::string line;
-    std::getline(file, line);  // Skip the first line (header)
-    while (std::getline(file, line)) {
-        std::istringstream iss(line);
-        std::string token;
-        std::vector<double> values;
-        score = 0;
-        // Skip the first value in each line
-        std::getline(iss, token, ',');
-
-        i = 0;
-        // Read the remaining values
-        while (std::getline(iss, token, ',')) {
-            values.push_back(std::stod(token));
-            score += std::stod(token) * query[i];
-            i++;
-        }
-        values.push_back(score);
-        // Add the vector of values to the vector
-        data.push_back(values);
-    }
-
-    file.close();
-    return data;
-}
-*/
-
-/*
-std::vector<MyTuple> readCSVDir(const string &filename, std::vector<double> query) {
-    std::vector<MyTuple> data;  // Vector to store the vectors of values
-    double score;
-    int i;
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        std::cerr << "Error opening file: " << filename << std::endl;
-        return data;  // Return an empty vector
-    }
-    std::string line;
-    std::getline(file, line);  // Skip the first line (header)
-    while (std::getline(file, line)) {
-        std::istringstream iss(line);
-        std::string token;
-        std::vector<double> values;
-        score = 0;
-        // Skip the first value in each line
-        std::getline(iss, token, ',');
-
-        i = 0;
-        // Read the remaining values
-        while (std::getline(iss, token, ',')) {
-            values.push_back(std::stod(token));
-            score += std::stod(token) * query[i];
-            i++;
-        }
-
-        std::vector<double> point = {values.begin(), values.end()};
-        score = BETA * score + (1 - BETA) * dist_line_point(point, query);
-        values.push_back(score);
-        // Add the vector of values to the vector
-        data.push_back(values);
-    }
-
-    file.close();
-    return data;
-}
-*/
-
+//Creates a data vector containing the tuples of the dataset from the given csv file
 std::vector<MyTuple> createDataVectorFromCSV(const string &filename) {
 
     std::vector<MyTuple> data;  // Vector to store the vectors of values
@@ -259,6 +183,7 @@ std::vector<MyTuple> createDataVectorFromCSV(const string &filename) {
     return data;
 }
 
+//Performs a linear top-k query given the dataset saved in a vector
 void sequentialLinearWithVector(std::vector<MyTuple> points, std::vector<double> query, int k) {
 
     std::priority_queue<NodeWithScore> heap;
@@ -472,8 +397,8 @@ int main() {
     typedef RTree<ValueType, double, DIM, float, LEAF_CAPACITY> MyTree;
     MyTree tree;
 
+    // PATH CONTAINING THE DATASET TO PROCESS
     std::string filePath = "../datasets/cor_neg/2D/cor_neg_1M_2.csv";
-
 
 
     #ifndef ONLY_RTREE
@@ -577,9 +502,7 @@ int main() {
     std::vector<double> totalTimeLinearBoundsComputationForDirectionalVect;
 
 
-    //std::ifstream inputFile("../utilities/k.txt");
-    std::ifstream inputFile("../utilities/new_k.txt");
-    //std::ifstream inputFile("../utilities/k_10.txt");
+    std::ifstream inputFile("../utilities/new_k.txt"); //FILE CONTAINING THE K VALUES TO PROCESS
 
     std::cout << "\n - Results for dataset = " << filePath << std::endl;
 
@@ -600,10 +523,9 @@ int main() {
         numLeavesDir = 0;
         numPointDir = 0;
 
-        //std::ifstream file("../queries/test.txt");
-        //std::ifstream file("../queries/" + std::to_string(DIM) + "d.txt");
+        std::ifstream file("../queries/" + std::to_string(DIM) + "d.txt"); //FILE CONTAINING THE QUERIES TO PROCESS
         //std::ifstream file("../balanced_queries/" + std::to_string(DIM) + "d.txt");
-        std::ifstream file("../unbalanced_queries/" + std::to_string(DIM) + "d.txt");
+        //std::ifstream file("../unbalanced_queries/" + std::to_string(DIM) + "d.txt");
         numQ = 0;
 
         if (file.is_open()) {
@@ -635,8 +557,8 @@ int main() {
                 tree.DirectionalTopKQueryRTree(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
                 #endif
 
-                #if TREE_METHOD == ROUGH
-                tree.DirectionalTopKQueryRTreeRough(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
+                #if TREE_METHOD == LOOSE
+                tree.DirectionalTopKQueryRTreeLoose(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
                 #endif
                 //tree.DirectionalTopKQueryRTreeMixed(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
                 auto endTimeDirRT = std::chrono::high_resolution_clock::now();
@@ -872,8 +794,8 @@ int main() {
         #if TREE_METHOD == EAGER
         row.push_back("Eager");
         #endif
-        #if TREE_METHOD == ROUGH
-        row.push_back("Rough");
+        #if TREE_METHOD == LOOSE
+        row.push_back("Loose");
         #endif
         row.push_back(std::to_string(timeLinRTvect[i]));
         row.push_back(std::to_string(numPointLinvect[i]));

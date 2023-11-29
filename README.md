@@ -8,8 +8,8 @@ This project depends on the [NLopt](https://nlopt.readthedocs.io/en/latest/) lib
 
 - Perform sequential linear and directional top-k queries given a CSV file containing the dataset.
 - Perform linear and directional top-k queries using an R-Tree index given a CSV file containing the dataset, a file containing the values of k to take into account and a file contaning the set of query weights of the queries to perform.
-- Perform directional queries using the TIGHT method (I/O optimality of accesses).
-- Perform directional queries using the LOOSE method (no non-linear problems to solve at the cost of higher I/O accesses).
+- Perform directional queries using the *TIGHT* method (I/O optimality of accesses).
+- Perform directional queries using the *LOOSE* method (no non-linear problems to solve at the cost of higher I/O accesses).
 - Track the performances of the queries (execution time, memory accesses, problems solved...).
 
 ## How to use

@@ -23,9 +23,9 @@
 #define DIM 2     //Dimensions of the dataset
 //#define PRINT_RESULTS
 #define MEASURE_TIME //Uncomment to measure the time of the execution of the algorithm
-#define EAGER 0
+#define TIGHT 0
 #define LOOSE 1
-#define TREE_METHOD EAGER // 0 for eager, 1 for loose
+#define TREE_METHOD TIGHT // 0 for tight, 1 for loose
 
 #define ASSERT assert // RTree uses ASSERT( condition )
 #ifndef Min

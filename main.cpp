@@ -398,7 +398,7 @@ int main() {
     MyTree tree;
 
     // PATH CONTAINING THE DATASET TO PROCESS
-    std::string filePath = "../datasets/cor_neg/2D/cor_neg_1M_2.csv";
+    std::string datasetPath = "../datasets/cor_neg/2D/cor_neg_1M_2.csv";
 
 
     #ifndef ONLY_RTREE
@@ -406,25 +406,25 @@ int main() {
     std::vector<int> k_values = {1, 5, 10, 50, 100, 500};
 
     std::vector<MyTuple> data;  // Vector to store the vectors of values
-    data = createDataVectorFromCSV(filePath);
+    data = createDataVectorFromCSV(datasetPath);
 
     for (int k_value: k_values) {
         //printf("K = %d\n", k_value);
-        //sequentialLinear(filePath, queryIniziale, k_value);
-        //sequentialDirectional(filePath, queryIniziale, k_value);
+        //sequentialLinear(datasetPath, queryIniziale, k_value);
+        //sequentialDirectional(datasetPath, queryIniziale, k_value);
         sequentialLinearWithVector(data, queryIniziale, k_value);
         sequentialDirectionalWithVector(data, queryIniziale, k_value);
     }
 
     //return 0;
     /*
-    sequentialLinear(filePath, queryIniziale, 10);
-    sequentialDirectional(filePath, queryIniziale, 10);
+    sequentialLinear(datasetPath, queryIniziale, 10);
+    sequentialDirectional(datasetPath, queryIniziale, 10);
     */
     #endif
 
     //Tree creation
-    std::vector<Rect> rectangles = createRectanglesFromCSV(filePath, DIM);
+    std::vector<Rect> rectangles = createRectanglesFromCSV(datasetPath, DIM);
 
     int i = 0;
     // Process the created rectangles as needed
@@ -502,13 +502,13 @@ int main() {
     std::vector<double> totalTimeLinearBoundsComputationForDirectionalVect;
 
 
-    std::ifstream inputFile("../utilities/new_k.txt"); //FILE CONTAINING THE K VALUES TO PROCESS
+    std::ifstream kValuesFile("../utilities/new_k.txt"); //FILE CONTAINING THE K VALUES TO PROCESS
 
-    std::cout << "\n - Results for dataset = " << filePath << std::endl;
+    std::cout << "\n - Results for dataset = " << datasetPath << std::endl;
 
-    while (inputFile >> k) {
+    while (kValuesFile >> k) {
 
-        //std::cout << "\n - Results for k = " << k << ", dataset = " << filePath << std::endl;
+        //std::cout << "\n - Results for k = " << k << ", dataset = " << datasetPath << std::endl;
 
         timeLinRT = 0;
         timeDirRT = 0;
@@ -523,14 +523,14 @@ int main() {
         numLeavesDir = 0;
         numPointDir = 0;
 
-        std::ifstream file("../queries/" + std::to_string(DIM) + "d.txt"); //FILE CONTAINING THE QUERIES TO PROCESS
-        //std::ifstream file("../balanced_queries/" + std::to_string(DIM) + "d.txt");
-        //std::ifstream file("../unbalanced_queries/" + std::to_string(DIM) + "d.txt");
+        std::ifstream queriesFile("../queries/" + std::to_string(DIM) + "d.txt"); //FILE CONTAINING THE QUERIES TO PROCESS
+        //std::ifstream queriesFile("../balanced_queries/" + std::to_string(DIM) + "d.txt");
+        //std::ifstream queriesFile("../unbalanced_queries/" + std::to_string(DIM) + "d.txt");
         numQ = 0;
 
-        if (file.is_open()) {
+        if (queriesFile.is_open()) {
             std::string line;
-            while (std::getline(file, line)) { // Read each line of the file
+            while (std::getline(queriesFile, line)) { // Read each line of the file
                 numQ++;
                 std::vector<double> query;
                 std::stringstream ss(line);
@@ -553,7 +553,7 @@ int main() {
                 //std::cout << "----------------DIRECTIONAL RTREE----------------" << std::endl;
                 auto startTimeDirRT = std::chrono::high_resolution_clock::now();
 
-                #if TREE_METHOD == EAGER
+                #if TREE_METHOD == TIGHT
                 tree.DirectionalTopKQueryRTree(k, query, &numBoxDir, &numLeavesDir, &numPointDir);
                 #endif
 
@@ -791,8 +791,8 @@ int main() {
         row.push_back(std::to_string(k_values[i]));
         row.push_back(std::to_string(numNodes));
         row.push_back(std::to_string(numLeaves));
-        #if TREE_METHOD == EAGER
-        row.push_back("Eager");
+        #if TREE_METHOD == TIGHT
+        row.push_back("Tight");
         #endif
         #if TREE_METHOD == LOOSE
         row.push_back("Loose");
